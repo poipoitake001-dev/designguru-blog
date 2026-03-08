@@ -1,0 +1,118 @@
+/* src/pages/About.css */
+
+.about-page {
+    padding-top: 2rem;
+    padding-bottom: 5rem;
+}
+
+.about-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.about-skeleton {
+    height: 400px;
+    background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+    background-size: 200% 100%;
+    animation: pulse 2s infinite ease-in-out;
+    border-radius: var(--radius-lg);
+}
+
+/* Author profile card */
+.author-profile {
+    text-align: center;
+    padding: 3rem 2rem;
+    margin-bottom: 3rem;
+}
+
+.author-avatar-large {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    margin: 0 auto 1.5rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+.author-avatar-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+    color: white;
+    font-size: 3rem;
+    font-weight: bold;
+    font-family: var(--font-serif);
+}
+
+.author-name {
+    font-family: var(--font-serif);
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.author-bio {
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto 2rem;
+    line-height: 1.7;
+}
+
+.social-links {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.social-link {
+    padding: 0.5rem 1.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.social-link:hover {
+    background-color: var(--accent-light);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transform: translateY(-2px);
+}
+
+/* About content section */
+.about-content {
+    padding: 0 1rem;
+}
+
+.about-content .section-header {
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.about-content .section-header h2 {
+    font-size: 1.75rem;
+    font-family: var(--font-serif);
+    margin: 0;
+}
+
+.about-content .decorative-line {
+    height: 2px;
+    flex-grow: 1;
+    background: linear-gradient(to right, var(--accent-color), transparent);
+    border-radius: 2px;
+    opacity: 0.5;
+}

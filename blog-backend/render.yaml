@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: blog-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false   # You will paste this from Neon dashboard
+      - key: FRONTEND_URL
+        sync: false   # Your Vercel frontend URL, e.g. https://your-site.vercel.app

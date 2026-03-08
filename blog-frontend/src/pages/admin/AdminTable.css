@@ -1,0 +1,229 @@
+/* src/pages/admin/AdminTable.css */
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.admin-table th {
+    padding: 1rem 1.5rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    border-top-left-radius: var(--radius-md);
+}
+
+.admin-table th:last-child {
+    border-top-right-radius: var(--radius-md);
+}
+
+.admin-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.admin-table tr:hover td {
+    background-color: var(--bg-primary);
+}
+
+/* Specific Columns */
+.td-image img {
+    width: 80px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+}
+
+.td-title {
+    font-weight: 500;
+    color: var(--text-primary);
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    border: 1px solid var(--border-color);
+}
+
+.td-date {
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+}
+
+.action-col {
+    width: 150px;
+    text-align: right;
+}
+
+.action-btns {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.edit-btn,
+.delete-btn {
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+    display: inline-block;
+}
+
+.edit-btn {
+    background-color: var(--bg-tertiary);
+    color: var(--accent-color);
+    border: 1px solid var(--border-color);
+}
+
+.edit-btn:hover {
+    background-color: var(--accent-light);
+    border-color: var(--accent-color);
+}
+
+.delete-btn {
+    background-color: transparent;
+    color: var(--error);
+    border: 1px solid transparent;
+}
+
+.delete-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-color: var(--error);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem !important;
+    color: var(--text-tertiary);
+}
+
+/* List header */
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.list-header h2 {
+    font-family: var(--font-serif);
+    font-size: 2rem;
+    margin: 0;
+}
+
+/* Row highlighted when pending delete */
+.row-danger td {
+    background-color: rgba(239, 68, 68, 0.04) !important;
+}
+
+/* Inline confirmation row */
+.confirm-row td {
+    padding: 0 !important;
+    border-bottom: 2px solid rgba(239, 68, 68, 0.3);
+}
+
+.confirm-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1.5rem;
+    background: rgba(239, 68, 68, 0.06);
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.confirm-msg {
+    font-size: 0.9rem;
+    color: #dc2626;
+    font-weight: 500;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.delete-confirm-btn {
+    padding: 0.4rem 1rem;
+    background-color: #dc2626;
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.delete-confirm-btn:hover:not(:disabled) {
+    background-color: #b91c1c;
+}
+
+.delete-confirm-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cancel-btn {
+    padding: 0.4rem 1rem;
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.cancel-btn:hover:not(:disabled) {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Admin action button in list header */
+.admin-btn {
+    padding: 0.6rem 1.25rem;
+    background-color: var(--accent-color);
+    color: white;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+}
+
+.admin-btn:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-1px);
+}

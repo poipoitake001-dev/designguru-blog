@@ -1,0 +1,314 @@
+/* src/pages/TutorialDetail.css */
+
+.tutorial-page {
+    animation: fadeIn var(--transition-normal) forwards;
+}
+
+/* Header */
+.tutorial-header {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    display: flex;
+    align-items: flex-end;
+    /* Remove top margin because ClientLayout already has pt */
+}
+
+/* Fallback if image fails */
+.tutorial-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+.header-overlay {
+    width: 100%;
+    padding: 3rem 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    /* Override glass-panel for this specific header to bridge image and content */
+    background: rgba(var(--bg-primary-rgb, 255, 255, 255), 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+html.dark .header-overlay {
+    background: rgba(var(--bg-primary-rgb, 15, 23, 42), 0.85);
+}
+
+.header-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 800px;
+}
+
+.category-tag {
+    display: inline-block;
+    background: var(--accent-light);
+    color: var(--accent-color);
+    padding: 0.35rem 1rem;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.title {
+    font-family: var(--font-serif);
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+}
+
+.meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.meta .dot {
+    opacity: 0.5;
+}
+
+/* Layout */
+.tutorial-body {
+    display: flex;
+    justify-content: space-between;
+    gap: 2.5rem;
+    padding-top: 4rem;
+    padding-bottom: 6rem;
+}
+
+.sidebar {
+    flex: 0 0 240px;
+    position: relative;
+}
+
+.sticky-nav {
+    position: sticky;
+    top: 100px;
+    /* Below navbar */
+}
+
+/* Left Sidebar - TOC */
+.left-sidebar {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .left-sidebar {
+        display: block;
+    }
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.back-btn:hover {
+    color: var(--accent-color);
+}
+
+.back-btn .icon {
+    transition: transform var(--transition-fast);
+}
+
+.back-btn:hover .icon {
+    transform: translateX(-4px);
+}
+
+.toc-glass {
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+}
+
+.toc-title {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.toc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.toc-list li a {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    display: block;
+    transition: all var(--transition-fast);
+    border-left: 2px solid transparent;
+    padding-left: 0.5rem;
+}
+
+.toc-list li.active a,
+.toc-list li a:hover {
+    color: var(--accent-color);
+    border-left-color: var(--accent-color);
+    font-weight: 500;
+}
+
+/* Center Content */
+.main-content {
+    flex: 1;
+    min-width: 0;
+    /* Prevent flex blowout */
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Rich Text Typography for WangEditor output */
+.rich-text-content {
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+}
+
+.rich-text-content p {
+    margin-bottom: 1.5em;
+}
+
+.rich-text-content h1,
+.rich-text-content h2,
+.rich-text-content h3 {
+    font-family: var(--font-serif);
+    margin-top: 2em;
+    margin-bottom: 1em;
+    color: var(--text-primary);
+}
+
+.rich-text-content h2 {
+    font-size: 2rem;
+    border-bottom: 1px solid rgba(var(--border-color), 0.5);
+    padding-bottom: 0.5em;
+}
+
+.rich-text-content h3 {
+    font-size: 1.5rem;
+}
+
+.rich-text-content code {
+    background: var(--bg-tertiary);
+    padding: 0.2em 0.4em;
+    border-radius: var(--radius-sm);
+    font-family: monospace;
+    font-size: 0.9em;
+    color: var(--accent-color);
+}
+
+.rich-text-content pre {
+    background: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    margin-bottom: 1.5em;
+    border: 1px solid var(--border-color);
+}
+
+.rich-text-content pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+}
+
+.rich-text-content blockquote {
+    border-left: 4px solid var(--accent-color);
+    background: var(--bg-tertiary);
+    margin: 0 0 1.5em 0;
+    padding: 1rem 1.5rem;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.rich-text-content img {
+    border-radius: var(--radius-lg);
+    margin: 2rem 0;
+    box-shadow: var(--shadow-md);
+    max-width: 100%;
+}
+
+/* Video Containers */
+.rich-text-content iframe {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+/* Right Sidebar - Author */
+.right-sidebar {
+    display: none;
+}
+
+@media (min-width: 1280px) {
+    .right-sidebar {
+        display: block;
+    }
+}
+
+.author-card {
+    padding: 2rem 1.5rem;
+    text-align: center;
+}
+
+.author-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+    margin: 0 auto 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.author-card h4 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.author-card p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.follow-btn {
+    width: 100%;
+    padding: 0.75rem 0;
+    background-color: transparent;
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color);
+    border-radius: var(--radius-full);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+}
+
+.follow-btn:hover {
+    background-color: var(--accent-color);
+    color: white;
+}
