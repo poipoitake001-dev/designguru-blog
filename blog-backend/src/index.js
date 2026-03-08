@@ -27,14 +27,12 @@ app.use(helmet({
 }));
 
 // ---------------------------------------------------------------------------
-// CORS — allow frontend domains (Vercel + local dev)
+// CORS — allow frontend domains (Vercel + local dev + custom domains)
 // ---------------------------------------------------------------------------
 const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:3000',
-    // Add your Vercel production URL here after first deploy:
-    // 'https://your-project.vercel.app'
     ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
 ];
 
@@ -43,8 +41,10 @@ app.use(cors({
         // Allow requests with no origin (mobile apps, curl, Render health checks)
         if (!origin) return callback(null, true);
         if (allowedOrigins.includes(origin)) return callback(null, true);
-        // Also allow any *.vercel.app subdomain dynamically
+        // Allow any *.vercel.app subdomain dynamically
         if (/\.vercel\.app$/.test(origin)) return callback(null, true);
+        // Allow any *.super-card-shop.cyou subdomain (including root)
+        if (/^https:\/\/([a-z0-9-]+\.)?super-card-shop\.cyou$/.test(origin)) return callback(null, true);
         callback(new Error(`CORS blocked: ${origin}`));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
