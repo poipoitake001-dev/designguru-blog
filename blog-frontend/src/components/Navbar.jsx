@@ -3,10 +3,16 @@ import { Link, useLocation } from 'react-router-dom';
 import { fetchSettings } from '../services/api';
 import './Navbar.css';
 
+const DEFAULT_NAV_ITEMS = [
+    { label: '所有教程', path: '/' },
+    { label: '关于作者', path: '/about' }
+];
+
 export default function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [siteName, setSiteName] = useState('DesignGuru');
+    const [navItems, setNavItems] = useState(DEFAULT_NAV_ITEMS);
     const location = useLocation();
 
     useEffect(() => {
@@ -20,9 +26,19 @@ export default function Navbar() {
 
         window.addEventListener('scroll', handleScroll);
 
-        // Load site name from backend
+        // Load site settings (name + nav items) from backend
         fetchSettings().then(({ data }) => {
             if (data.site_name) setSiteName(data.site_name);
+            if (data.nav_items) {
+                try {
+                    const parsed = JSON.parse(data.nav_items);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setNavItems(parsed);
+                    }
+                } catch (e) {
+                    console.error('Failed to parse nav_items:', e);
+                }
+            }
         }).catch(() => { });
 
         return () => window.removeEventListener('scroll', handleScroll);
@@ -53,8 +69,15 @@ export default function Navbar() {
                 </Link>
 
                 <nav className="navbar-links">
-                    <Link to="/" className={`nav-link ${isCurrent('/')}`}>所有教程</Link>
-                    <Link to="/about" className={`nav-link ${isCurrent('/about')}`}>关于作者</Link>
+                    {navItems.map((item, i) => (
+                        <Link
+                            key={i}
+                            to={item.path}
+                            className={`nav-link ${isCurrent(item.path)}`}
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
                 </nav>
 
                 <div className="navbar-actions">

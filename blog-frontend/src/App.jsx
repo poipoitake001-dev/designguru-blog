@@ -14,6 +14,7 @@ const ArticleList = lazy(() => import('./pages/admin/ArticleList'));
 const ArticleEditor = lazy(() => import('./pages/admin/ArticleEditor'));
 const SiteSettings = lazy(() => import('./pages/admin/SiteSettings'));
 const AboutEditor = lazy(() => import('./pages/admin/AboutEditor'));
+const NavEditor = lazy(() => import('./pages/admin/NavEditor'));
 
 function LoadingSpinner() {
   return (
@@ -43,6 +44,7 @@ function App() {
           <Route path="editor/:id" element={<ArticleEditor />} />
           <Route path="settings" element={<SiteSettings />} />
           <Route path="about" element={<AboutEditor />} />
+          <Route path="navigation" element={<NavEditor />} />
         </Route>
       </Routes>
     </Suspense>

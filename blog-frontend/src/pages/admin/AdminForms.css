@@ -166,3 +166,92 @@
     opacity: 0.7;
     cursor: not-allowed;
 }
+
+/* ---- Nav Editor Styles ---- */
+.nav-editor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.nav-editor-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    cursor: grab;
+}
+
+.nav-editor-item:active {
+    cursor: grabbing;
+}
+
+.nav-editor-item.dragging {
+    opacity: 0.5;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-light);
+}
+
+.nav-drag-handle {
+    font-size: 1.2rem;
+    color: var(--text-tertiary);
+    user-select: none;
+    flex-shrink: 0;
+    cursor: grab;
+}
+
+.nav-editor-fields {
+    display: flex;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.nav-editor-fields .form-group {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.nav-remove-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all var(--transition-fast);
+}
+
+.nav-remove-btn:hover {
+    background: #fee2e2;
+    color: #ef4444;
+    border-color: #ef4444;
+}
+
+.nav-add-btn {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--accent-color);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nav-add-btn:hover {
+    border-color: var(--accent-color);
+    background: var(--accent-light);
+}

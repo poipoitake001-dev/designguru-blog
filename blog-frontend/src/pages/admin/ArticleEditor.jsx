@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import '@wangeditor/editor/dist/css/style.css';
 import { Editor, Toolbar } from '@wangeditor/editor-for-react';
 import { fetchTutorialDetail, createArticle, updateArticle, uploadMediaFile } from '../../services/api';
+import DragDropUpload from '../../components/DragDropUpload';
 import './ArticleEditor.css';
 
 export default function ArticleEditor() {
@@ -146,7 +147,7 @@ export default function ArticleEditor() {
                 </div>
 
                 <div className="editor-sidebar glass-panel">
-                    <h3>基础设置</h3>
+                    <h3>文章设置</h3>
 
                     <div className="form-group">
                         <label>分类</label>
@@ -159,18 +160,19 @@ export default function ArticleEditor() {
                     </div>
 
                     <div className="form-group">
-                        <label>封面配图 (URL)</label>
+                        <label>封面配图</label>
+                        <DragDropUpload
+                            value={formData.coverImage}
+                            onChange={(url) => setFormData(prev => ({ ...prev, coverImage: url }))}
+                            placeholder="支持 JPG、PNG、GIF、WebP 格式"
+                        />
+                        <span className="form-hint" style={{ marginTop: '0.5rem', display: 'block' }}>或直接输入图片链接：</span>
                         <input
                             name="coverImage"
                             value={formData.coverImage}
                             onChange={handleChange}
-                            placeholder="输入图片链接..."
+                            placeholder="https://example.com/cover.jpg"
                         />
-                        {formData.coverImage && (
-                            <div className="cover-preview">
-                                <img src={formData.coverImage} alt="封面预览" />
-                            </div>
-                        )}
                     </div>
 
                     <div className="form-group">

@@ -45,6 +45,10 @@ export default function AdminLayout() {
                         <span className="icon">👤</span>
                         关于作者
                     </Link>
+                    <Link to="/admin/navigation" className={`admin-nav-item ${isCurrent('/admin/navigation')}`}>
+                        <span className="icon">🧭</span>
+                        导航管理
+                    </Link>
                 </nav>
 
                 <div className="admin-sidebar-footer">

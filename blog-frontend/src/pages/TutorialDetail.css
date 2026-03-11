@@ -312,3 +312,24 @@ html.dark .header-overlay {
     background-color: var(--accent-color);
     color: white;
 }
+
+/* Author avatar image (when loaded from about settings) */
+.author-avatar-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 0 auto 1.5rem;
+    box-shadow: var(--shadow-md);
+    display: block;
+}
+
+/* TOC sub-heading indent */
+.toc-list li.toc-indent a {
+    padding-left: 1.2rem;
+    font-size: 0.85rem;
+}
+
+.follow-btn {
+    cursor: pointer;
+}
