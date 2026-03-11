@@ -12,11 +12,16 @@ const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
 
+const fs = require('fs');
+
 // Configure Multer storage: save to /uploads with unique filenames
+const uploadDir = path.join(__dirname, '..', '..', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, '..', '..', 'uploads'));
-    },
+    destination: uploadDir,
     filename: (req, file, cb) => {
         // Generate a unique filename to avoid collisions
         const ext = path.extname(file.originalname);
