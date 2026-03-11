@@ -1,7 +1,7 @@
 /**
  * Upload Routes
  * Handles file uploads for images and videos from WangEditor.
- * Files are stored locally in the /uploads directory.
+ * Files are stored in Cloudinary for persistent global access.
  *
  * POST /api/upload  - Upload a single file, returns the public URL
  */
@@ -9,50 +9,36 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const { v2: cloudinary } = require('cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const path = require('path');
-const crypto = require('crypto');
 
-const fs = require('fs');
+// Configure Cloudinary from environment variables
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-// Configure Multer storage: save to /uploads with unique filenames
-const uploadDir = path.join(__dirname, '..', '..', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-    destination: uploadDir,
-    filename: (req, file, cb) => {
-        // Generate a unique filename to avoid collisions
-        const ext = path.extname(file.originalname);
-        const uniqueName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
-        cb(null, uniqueName);
+// Configure Multer storage to use Cloudinary
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'designguru-blog', // folder name in your Cloudinary account
+        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'webm', 'ogg'],
+        // transformation: [{ width: 1200, crop: 'limit' }] // Optional: auto resize large images
     }
 });
 
-// File filter: allow common image and video formats only
-const fileFilter = (req, file, cb) => {
-    const allowedMimes = [
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-        'video/mp4', 'video/webm', 'video/ogg'
-    ];
-    if (allowedMimes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new Error(`不支持的文件类型: ${file.mimetype}`), false);
-    }
-};
-
 const upload = multer({
-    storage,
-    fileFilter,
+    storage: storage,
     limits: {
         fileSize: 50 * 1024 * 1024 // 50 MB max
     }
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/upload — upload a single media file
+// POST /api/upload — upload a single media file to Cloudinary
 // ---------------------------------------------------------------------------
 router.post('/', upload.single('file'), (req, res) => {
     try {
@@ -60,8 +46,8 @@ router.post('/', upload.single('file'), (req, res) => {
             return res.status(400).json({ error: '没有收到文件' });
         }
 
-        // Build the public URL based on the server's static file serving
-        const fileUrl = `/uploads/${req.file.filename}`;
+        // req.file contains the cloudinary URL in its 'path' property
+        const fileUrl = req.file.path;
 
         // WangEditor expects { url, alt } for images
         res.json({
