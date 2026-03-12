@@ -8,6 +8,41 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+// ---- Auth helpers ----
+
+function getToken() {
+    return localStorage.getItem('admin_token');
+}
+
+function authHeaders() {
+    const token = getToken();
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+/** If API returns 401, clear token and redirect to login */
+function handle401(res) {
+    if (res.status === 401) {
+        localStorage.removeItem('admin_token');
+        window.location.href = '/admin/login';
+    }
+    return res;
+}
+
+// ---- Auth ----
+
+export async function login(password) {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '密码错误，请重试');
+    }
+    return res.json();
+}
+
 // ---- Articles ----
 
 export async function fetchTutorials() {
@@ -23,29 +58,30 @@ export async function fetchTutorialDetail(id) {
 }
 
 export async function createArticle(payload) {
-    const res = await fetch(`${API_BASE}/articles`, {
+    const res = handle401(await fetch(`${API_BASE}/articles`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
-    });
+    }));
     if (!res.ok) throw new Error('创建文章失败');
     return res.json();
 }
 
 export async function updateArticle(id, payload) {
-    const res = await fetch(`${API_BASE}/articles/${id}`, {
+    const res = handle401(await fetch(`${API_BASE}/articles/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
-    });
+    }));
     if (!res.ok) throw new Error('更新文章失败');
     return res.json();
 }
 
 export async function deleteArticle(id) {
-    const res = await fetch(`${API_BASE}/articles/${id}`, {
-        method: 'DELETE'
-    });
+    const res = handle401(await fetch(`${API_BASE}/articles/${id}`, {
+        method: 'DELETE',
+        headers: { ...authHeaders() }
+    }));
     if (!res.ok) throw new Error('删除文章失败');
     return res.json();
 }
@@ -56,11 +92,15 @@ export async function uploadMediaFile(file) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = await fetch(`${API_BASE}/upload`, {
+    const res = handle401(await fetch(`${API_BASE}/upload`, {
         method: 'POST',
+        headers: { ...authHeaders() },   // NOTE: do NOT set Content-Type for multipart
         body: formData
-    });
-    if (!res.ok) throw new Error('文件上传失败');
+    }));
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '文件上传失败');
+    }
     const data = await res.json();
 
     // Resolve relative URLs (local) to absolute (production already absolute)
@@ -84,11 +124,11 @@ export async function fetchSettings() {
 }
 
 export async function updateSettings(settings) {
-    const res = await fetch(`${API_BASE}/settings`, {
+    const res = handle401(await fetch(`${API_BASE}/settings`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(settings)
-    });
+    }));
     if (!res.ok) throw new Error('更新站点设置失败');
     return res.json();
 }
@@ -102,11 +142,11 @@ export async function fetchAbout() {
 }
 
 export async function updateAbout(aboutData) {
-    const res = await fetch(`${API_BASE}/about`, {
+    const res = handle401(await fetch(`${API_BASE}/about`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(aboutData)
-    });
+    }));
     if (!res.ok) throw new Error('更新关于页面失败');
     return res.json();
 }

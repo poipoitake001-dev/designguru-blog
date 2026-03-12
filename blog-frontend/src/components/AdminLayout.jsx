@@ -1,13 +1,19 @@
 import React from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import './AdminLayout.css';
 
 export default function AdminLayout() {
     const location = useLocation();
+    const navigate = useNavigate();
 
     const isCurrent = (path) => {
         if (path === '/admin') return location.pathname === '/admin' ? 'active' : '';
         return location.pathname.startsWith(path) ? 'active' : '';
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('admin_token');
+        navigate('/admin/login', { replace: true });
     };
 
     return (
@@ -67,8 +73,11 @@ export default function AdminLayout() {
                     <div className="header-actions">
                         <div className="admin-user">
                             <div className="avatar">A</div>
-                            <span>Admin User</span>
+                            <span>Admin</span>
                         </div>
+                        <button className="logout-btn" onClick={handleLogout} title="退出登录">
+                            ⎋ 退出
+                        </button>
                     </div>
                 </header>
 

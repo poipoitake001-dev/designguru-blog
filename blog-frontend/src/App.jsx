@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ClientLayout from './components/ClientLayout';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home'));
@@ -9,6 +10,7 @@ const TutorialDetail = lazy(() => import('./pages/TutorialDetail'));
 
 // Admin pages
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const ArticleList = lazy(() => import('./pages/admin/ArticleList'));
 const ArticleEditor = lazy(() => import('./pages/admin/ArticleEditor'));
@@ -36,8 +38,18 @@ function App() {
           <Route path="tutorial/:id" element={<TutorialDetail />} />
         </Route>
 
-        {/* Admin Routes (独立入口，前端不显示链接) */}
-        <Route path="/admin" element={<AdminLayout />}>
+        {/* Admin Login (public) */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+
+        {/* Admin Routes — protected by JWT token */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Dashboard />} />
           <Route path="articles" element={<ArticleList />} />
           <Route path="editor/new" element={<ArticleEditor />} />

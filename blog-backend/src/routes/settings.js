@@ -13,6 +13,7 @@
 const express = require('express');
 const router = express.Router();
 const { query, queryOne, run } = require('../database');
+const { requireAuth } = require('../middleware/auth');
 
 // ---------------------------------------------------------------------------
 // PUBLIC: Get all site settings
@@ -34,7 +35,7 @@ router.get('/settings', async (req, res) => {
 // ---------------------------------------------------------------------------
 // ADMIN: Update site settings
 // ---------------------------------------------------------------------------
-router.put('/settings', async (req, res) => {
+router.put('/settings', requireAuth, async (req, res) => {
     try {
         const updates = req.body;
         for (const [key, value] of Object.entries(updates)) {
@@ -68,7 +69,7 @@ router.get('/about', async (req, res) => {
 // ---------------------------------------------------------------------------
 // ADMIN: Update about page content
 // ---------------------------------------------------------------------------
-router.put('/about', async (req, res) => {
+router.put('/about', requireAuth, async (req, res) => {
     try {
         const { name, avatar, bio, content, email, github, twitter } = req.body;
 

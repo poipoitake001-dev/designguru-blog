@@ -15,6 +15,7 @@ const { initDb } = require('./database');
 const articleRoutes = require('./routes/articles');
 const uploadRoutes = require('./routes/upload');
 const settingsRoutes = require('./routes/settings');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -38,12 +39,9 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, curl, Render health checks)
         if (!origin) return callback(null, true);
         if (allowedOrigins.includes(origin)) return callback(null, true);
-        // Allow any *.vercel.app subdomain dynamically
         if (/\.vercel\.app$/.test(origin)) return callback(null, true);
-        // Allow any *.super-card-shop.cyou subdomain (including root)
         if (/^https:\/\/([a-z0-9-]+\.)?super-card-shop\.cyou$/.test(origin)) return callback(null, true);
         callback(new Error(`CORS blocked: ${origin}`));
     },
@@ -61,6 +59,13 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
+// Stricter rate limit for login (10 attempts per 15 min)
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: '登录尝试过多，请15分钟后再试' }
+});
+
 // ---------------------------------------------------------------------------
 // Body parsers
 // ---------------------------------------------------------------------------
@@ -68,18 +73,19 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ---------------------------------------------------------------------------
-// Static file serving for uploads
+// Static file serving for uploads (legacy)
 // ---------------------------------------------------------------------------
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
-app.use('/api/articles', articleRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api', settingsRoutes);
+app.use('/api/auth', loginLimiter, authRoutes);
+app.use('/api/articles', articleRoutes);  // auth applied inside route file
+app.use('/api/upload', uploadRoutes);     // auth applied inside route file
+app.use('/api', settingsRoutes);          // auth applied inside route file
 
-// Health check (used by Render)
+// Health check (used by Render / UptimeRobot)
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -100,7 +106,7 @@ initDb()
         app.listen(PORT, () => {
             console.log(`\n  🚀 Blog Backend running at http://localhost:${PORT}`);
             console.log(`  📡 API: http://localhost:${PORT}/api/articles`);
-            console.log(`  📂 Uploads: http://localhost:${PORT}/uploads\n`);
+            console.log(`  🔒 Auth: http://localhost:${PORT}/api/auth/login\n`);
         });
     })
     .catch((err) => {

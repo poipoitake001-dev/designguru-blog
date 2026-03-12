@@ -14,6 +14,7 @@
 const express = require('express');
 const router = express.Router();
 const { query, queryOne, run } = require('../database');
+const { requireAuth } = require('../middleware/auth');
 
 // ---------------------------------------------------------------------------
 // PUBLIC: Get all articles (without full content)
@@ -64,7 +65,7 @@ router.get('/:id', async (req, res) => {
 // ---------------------------------------------------------------------------
 // ADMIN: Create a new article
 // ---------------------------------------------------------------------------
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
     try {
         const { title, category, summary, coverImage, content, author } = req.body;
 
@@ -96,7 +97,7 @@ router.post('/', async (req, res) => {
 // ---------------------------------------------------------------------------
 // ADMIN: Update an existing article
 // ---------------------------------------------------------------------------
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, async (req, res) => {
     try {
         const { title, category, summary, coverImage, content, author } = req.body;
         const articleId = Number(req.params.id);
@@ -131,7 +132,7 @@ router.put('/:id', async (req, res) => {
 // ---------------------------------------------------------------------------
 // ADMIN: Delete an article
 // ---------------------------------------------------------------------------
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
     try {
         const articleId = Number(req.params.id);
 
