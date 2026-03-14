@@ -1,0 +1,505 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * CdkVerify.css — CDK 凭证验证着陆页样式
+ *
+ * 设计语言：深色主题 + 渐变强调色 + 玻璃拟态卡片
+ * 自适应：移动端悬浮按钮 + PC 端模态框
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 页面容器 ── */
+.cdk-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 50%, #16213e 100%);
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: #e0e0e0;
+  position: relative;
+}
+
+.cdk-container {
+  width: 100%;
+  max-width: 480px;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* ── 页头 ── */
+.cdk-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.cdk-header__icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+  animation: pulse 2s infinite;
+}
+
+.cdk-header__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 0.5rem;
+}
+
+.cdk-header__subtitle {
+  font-size: 0.875rem;
+  color: #8890a4;
+  margin: 0;
+  letter-spacing: 0.08em;
+}
+
+/* ── CDK 输入表单 ── */
+.cdk-form {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+}
+
+.cdk-form__input-group {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.cdk-form__input {
+  flex: 1;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  letter-spacing: 0.1em;
+}
+
+.cdk-form__input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.cdk-form__input::placeholder {
+  color: #5a5f73;
+  letter-spacing: normal;
+}
+
+.cdk-form__btn {
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.15s, box-shadow 0.3s, opacity 0.3s;
+  position: relative;
+  min-width: 80px;
+}
+
+.cdk-form__btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.cdk-form__btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.cdk-form__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cdk-form__spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.cdk-form__error {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #f87171;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cdk-form__error-icon {
+  font-size: 1.1rem;
+}
+
+/* ── 验证结果区域 ── */
+.cdk-result {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* TOTP 六位码卡片 */
+.cdk-result__code-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.cdk-result__code-label {
+  font-size: 0.875rem;
+  color: #8890a4;
+  margin-bottom: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cdk-result__code-digits {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.cdk-result__digit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3.5rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 10px;
+  color: #fff;
+  animation: digitPop 0.4s ease-out both;
+}
+
+.cdk-result__digit:nth-child(1) { animation-delay: 0.05s; }
+.cdk-result__digit:nth-child(2) { animation-delay: 0.10s; }
+.cdk-result__digit:nth-child(3) { animation-delay: 0.15s; }
+.cdk-result__digit:nth-child(4) { animation-delay: 0.20s; }
+.cdk-result__digit:nth-child(5) { animation-delay: 0.25s; }
+.cdk-result__digit:nth-child(6) { animation-delay: 0.30s; }
+
+/* 倒计时进度条 */
+.cdk-result__countdown {
+  position: relative;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.cdk-result__countdown-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+
+.cdk-result__countdown-text {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #8890a4;
+}
+
+/* ── 教程区域 ── */
+.cdk-result__tutorial {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.cdk-result__tutorial-toggle {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.cdk-result__tutorial-toggle:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.cdk-result__tutorial-arrow {
+  transition: transform 0.3s;
+  font-size: 0.75rem;
+}
+
+.cdk-result__tutorial-arrow--open {
+  transform: rotate(180deg);
+}
+
+.cdk-result__tutorial-content {
+  padding: 0 1.25rem 1.25rem;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #b0b8c8;
+  animation: slideDown 0.3s ease-out;
+}
+
+.cdk-result__tutorial-content p {
+  margin: 0 0 0.75rem;
+}
+
+.cdk-result__tutorial-content ol,
+.cdk-result__tutorial-content ul {
+  padding-left: 1.5rem;
+  margin: 0 0 0.75rem;
+}
+
+/* ── 联系方式区域 ── */
+.cdk-result__contact {
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+/* --- ContactObfuscator 组件内联样式覆盖 --- */
+.contact-obfuscator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.contact-obfuscated {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  user-select: none;
+}
+
+.contact-obfuscated__id {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 1rem;
+  color: #667eea;
+  letter-spacing: 0.05em;
+}
+
+.contact-obfuscator__btn {
+  padding: 0.625rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid rgba(102, 126, 234, 0.4);
+  border-radius: 8px;
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.contact-obfuscator__btn:hover {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: rgba(102, 126, 234, 0.6);
+  transform: translateY(-1px);
+}
+
+.contact-obfuscator__btn--copied {
+  background: rgba(34, 197, 94, 0.15) !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+  color: #22c55e !important;
+}
+
+/* ── 移动端悬浮按钮 ── */
+.cdk-float-btn {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.5s ease-out;
+}
+
+.cdk-float-btn:active {
+  opacity: 0.9;
+}
+
+/* ── PC 端二维码模态框触发按钮 ── */
+.cdk-qr-trigger {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  padding: 0.875rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+  transition: transform 0.2s, box-shadow 0.3s;
+  z-index: 1000;
+  animation: fadeInUp 0.6s ease-out 0.5s both;
+}
+
+.cdk-qr-trigger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(102, 126, 234, 0.6);
+}
+
+/* ── 模态框遮罩 ── */
+.cdk-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.cdk-modal {
+  background: #1a1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  width: 90%;
+  max-width: 380px;
+  text-align: center;
+  position: relative;
+  animation: scaleIn 0.3s ease-out;
+}
+
+.cdk-modal__close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: #8890a4;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.cdk-modal__close:hover {
+  color: #fff;
+}
+
+.cdk-modal__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 0.5rem;
+}
+
+.cdk-modal__desc {
+  font-size: 0.875rem;
+  color: #8890a4;
+  margin: 0 0 1.5rem;
+}
+
+/* ═══════ 动画关键帧 ═══════ */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; }
+  to   { opacity: 1; max-height: 500px; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes digitPop {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.1); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════ 响应式适配 ═══════ */
+
+@media (max-width: 480px) {
+  .cdk-container {
+    max-width: 100%;
+  }
+
+  .cdk-form__input-group {
+    flex-direction: column;
+  }
+
+  .cdk-result__digit {
+    width: 2.5rem;
+    height: 3rem;
+    font-size: 1.4rem;
+  }
+
+  .cdk-result__code-card {
+    padding: 1.5rem 1rem;
+  }
+
+  /* 为底部悬浮按钮留出空间 */
+  .cdk-page {
+    padding-bottom: 5rem;
+  }
+}

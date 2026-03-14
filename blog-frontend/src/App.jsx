@@ -7,6 +7,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 const Home = lazy(() => import('./pages/Home'));
 const About = lazy(() => import('./pages/About'));
 const TutorialDetail = lazy(() => import('./pages/TutorialDetail'));
+const CdkVerify = lazy(() => import('./pages/CdkVerify'));
 
 // Admin pages
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
@@ -40,6 +41,9 @@ function App() {
 
         {/* Admin Login (public) */}
         <Route path="/admin/login" element={<AdminLogin />} />
+
+        {/* CDK Verify Landing Page (public, standalone) */}
+        <Route path="/verify" element={<CdkVerify />} />
 
         {/* Admin Routes — protected by JWT token */}
         <Route

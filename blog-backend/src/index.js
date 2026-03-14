@@ -16,6 +16,7 @@ const articleRoutes = require('./routes/articles');
 const uploadRoutes = require('./routes/upload');
 const settingsRoutes = require('./routes/settings');
 const authRoutes = require('./routes/auth');
+const cdkRoutes = require('./routes/cdk');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -43,6 +44,8 @@ app.use(cors({
         if (allowedOrigins.includes(origin)) return callback(null, true);
         if (/\.vercel\.app$/.test(origin)) return callback(null, true);
         if (/^https:\/\/([a-z0-9-]+\.)?super-card-shop\.cyou$/.test(origin)) return callback(null, true);
+        // 支持 tech. / api. 子域名
+        if (/^https:\/\/(tech|api)\./.test(origin)) return callback(null, true);
         callback(new Error(`CORS blocked: ${origin}`));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -84,6 +87,7 @@ app.use('/api/auth', loginLimiter, authRoutes);
 app.use('/api/articles', articleRoutes);  // auth applied inside route file
 app.use('/api/upload', uploadRoutes);     // auth applied inside route file
 app.use('/api', settingsRoutes);          // auth applied inside route file
+app.use('/api/cdk', cdkRoutes);            // CDK verify (public) + manage (admin JWT)
 
 // Health check (used by Render / UptimeRobot)
 app.get('/api/health', (req, res) => {

@@ -61,6 +61,33 @@ async function initDb() {
       )
     `);
 
+    // ── CDK 凭证表：存储 CDK 编码、TOTP 密钥、教程文本、客服联系方式 ──
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cdk_codes (
+        id             SERIAL PRIMARY KEY,
+        code           TEXT NOT NULL UNIQUE,
+        totp_secret    TEXT NOT NULL,
+        tutorial_text  TEXT NOT NULL DEFAULT '',
+        contact_base64 TEXT NOT NULL DEFAULT '',
+        max_uses       INTEGER NOT NULL DEFAULT 0,
+        used_count     INTEGER NOT NULL DEFAULT 0,
+        is_active      BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at     TIMESTAMPTZ
+      )
+    `);
+
+    // ── CDK 使用日志：记录每次验证的 IP 和 UA（安全审计）──
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cdk_usage_log (
+        id         SERIAL PRIMARY KEY,
+        cdk_id     INTEGER NOT NULL REFERENCES cdk_codes(id),
+        ip_address TEXT NOT NULL DEFAULT '',
+        user_agent TEXT NOT NULL DEFAULT '',
+        used_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
     // Seed default site settings if not exist
     const defaults = {
       site_name: 'DesignGuru',

@@ -150,3 +150,23 @@ export async function updateAbout(aboutData) {
     if (!res.ok) throw new Error('更新关于页面失败');
     return res.json();
 }
+
+// ---- CDK Verify ----
+
+/**
+ * 校验 CDK 凭证，获取 TOTP 验证码 + 教程 + 客服联系方式
+ * @param {string} code - CDK 凭证码
+ * @returns {{ success, code2fa, timeRemaining, tutorial, contactBase64 }}
+ */
+export async function verifyCdk(code) {
+    const res = await fetch(`${API_BASE}/cdk/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'CDK 验证失败');
+    }
+    return res.json();
+}
