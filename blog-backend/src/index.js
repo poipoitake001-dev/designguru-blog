@@ -53,10 +53,18 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
+// Stricter rate limit for login (10 attempts per 15 min)
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
-    message: { error: '\u767b\u5f55\u5c1d\u8bd5\u8fc7\u591a\uff0c\u8bf7 15 \u5206\u949f\u540e\u518d\u8bd5' }
+    message: { error: '登录尝试过多，请15分钟后再试' }
+});
+
+// CDK 校验接口限流 (20 次/15分钟)
+const cdkLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { error: '校验请求过于频繁，请稍后再试' }
 });
 
 app.use(express.json({ limit: '10mb' }));
@@ -65,10 +73,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.use('/api/auth', loginLimiter, authRoutes);
-app.use('/api/articles', articleRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api', settingsRoutes);
-app.use('/api/cdk', cdkRoutes);
+app.use('/api/articles', articleRoutes);  // auth applied inside route file
+app.use('/api/upload', uploadRoutes);     // auth applied inside route file
+app.use('/api', settingsRoutes);          // auth applied inside route file
+app.use('/api/cdk', cdkLimiter, cdkRoutes);     // CDK 校验 + TOTP（含独立限流）
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
