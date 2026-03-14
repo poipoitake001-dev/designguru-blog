@@ -170,3 +170,35 @@ export async function verifyCdk(code) {
     }
     return res.json();
 }
+
+// ---- Admin CDK Management ----
+
+export async function fetchCdks() {
+    const res = handle401(await fetch(`${API_BASE}/cdk/list`, {
+        headers: authHeaders()
+    }));
+    if (!res.ok) throw new Error('获取 CDK 列表失败');
+    return res.json();
+}
+
+export async function createCdk(cdkData) {
+    const res = handle401(await fetch(`${API_BASE}/cdk/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(cdkData)
+    }));
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '创建 CDK 失败');
+    }
+    return res.json();
+}
+
+export async function toggleCdkStatus(id) {
+    const res = handle401(await fetch(`${API_BASE}/cdk/toggle/${id}`, {
+        method: 'PUT',
+        headers: authHeaders()
+    }));
+    if (!res.ok) throw new Error('更新 CDK 状态失败');
+    return res.json();
+}

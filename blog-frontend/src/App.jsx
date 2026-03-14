@@ -18,6 +18,7 @@ const ArticleEditor = lazy(() => import('./pages/admin/ArticleEditor'));
 const SiteSettings = lazy(() => import('./pages/admin/SiteSettings'));
 const AboutEditor = lazy(() => import('./pages/admin/AboutEditor'));
 const NavEditor = lazy(() => import('./pages/admin/NavEditor'));
+const CdkManager = lazy(() => import('./pages/admin/CdkManager'));
 
 function LoadingSpinner() {
   return (
@@ -58,6 +59,7 @@ function App() {
           <Route path="articles" element={<ArticleList />} />
           <Route path="editor/new" element={<ArticleEditor />} />
           <Route path="editor/:id" element={<ArticleEditor />} />
+          <Route path="cdk" element={<CdkManager />} />
           <Route path="settings" element={<SiteSettings />} />
           <Route path="about" element={<AboutEditor />} />
           <Route path="navigation" element={<NavEditor />} />

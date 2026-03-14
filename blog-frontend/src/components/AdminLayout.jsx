@@ -41,6 +41,10 @@ export default function AdminLayout() {
                         <span className="icon">✨</span>
                         发布新教程
                     </Link>
+                    <Link to="/admin/cdk" className={`admin-nav-item ${isCurrent('/admin/cdk')}`}>
+                        <span className="icon">🔑</span>
+                        CDK管理
+                    </Link>
 
                     <div className="nav-group-label" style={{ marginTop: '1.5rem' }}>系统设置</div>
                     <Link to="/admin/settings" className={`admin-nav-item ${isCurrent('/admin/settings')}`}>
