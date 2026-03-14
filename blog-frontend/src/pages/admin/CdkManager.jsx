@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchCdks, createCdk, toggleCdkStatus } from '../../../services/api';
+import { fetchCdks, createCdk, toggleCdkStatus } from '../../services/api';
 import './CdkManager.css';
 
 export default function CdkManager() {
