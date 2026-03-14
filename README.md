@@ -49,7 +49,7 @@ npm run dev    # 启动开发服务器 http://localhost:5173
 参考 `blog-backend/.env.example` 和 `blog-frontend/.env.example` 配置环境变量。
 
 - **前端** → [Vercel](https://vercel.com)，设置 `VITE_API_URL`
-- **后端** → [Render](https://render.com)，设置 `DATABASE_URL` 和 `FRONTEND_URL`
+- **后端** → [Render](https://render.com)，至少设置 `DATABASE_URL`、`FRONTEND_URL`、`JWT_SECRET`，以及 `ADMIN_PASSWORD`（或 `ADMIN_PASSWORD_HASH`）
 - **数据库** → [Neon](https://neon.tech)，创建项目后复制连接串
 
 ## 功能

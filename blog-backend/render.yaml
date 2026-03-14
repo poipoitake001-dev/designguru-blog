@@ -14,3 +14,7 @@ services:
         sync: false   # You will paste this from Neon dashboard
       - key: FRONTEND_URL
         sync: false   # Your Vercel frontend URL, e.g. https://your-site.vercel.app
+      - key: ADMIN_PASSWORD
+        sync: false   # Admin password used by /api/auth/login
+      - key: JWT_SECRET
+        generateValue: true
