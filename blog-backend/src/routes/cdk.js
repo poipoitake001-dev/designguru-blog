@@ -276,6 +276,23 @@ router.put('/toggle/:id', authMiddleware, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DELETE /api/cdk/:id — 管理员：删除 CDK
+// ─────────────────────────────────────────────────────────────────────────────
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await run(`DELETE FROM cdk_codes WHERE id = $1 RETURNING id`, [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'CDK 不存在' });
+    }
+    res.json({ success: true, id: Number(id) });
+  } catch (err) {
+    console.error('DELETE /api/cdk/:id error:', err);
+    res.status(500).json({ error: '删除失败' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PUT /api/cdk/articles/:id — 管理员：更新 CDK 绑定的教程列表
 // ─────────────────────────────────────────────────────────────────────────────
 router.put('/articles/:id', authMiddleware, async (req, res) => {

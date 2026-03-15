@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { fetchCdks, createCdk, toggleCdkStatus, fetchTutorials, updateCdkArticles } from '../../services/api';
+import { fetchCdks, createCdk, toggleCdkStatus, deleteCdk, fetchTutorials, updateCdkArticles } from '../../services/api';
 import './CdkManager.css';
 
 export default function CdkManager() {
@@ -85,6 +85,16 @@ export default function CdkManager() {
             setCdks(cdks.map(c => c.id === id ? { ...c, is_active: !c.is_active } : c));
         } catch (err) {
             alert('切换状态失败: ' + err.message);
+        }
+    };
+
+    const handleDelete = async (id, code) => {
+        if (!window.confirm(`确认删除凭证 ${code} 吗？此操作不可恢复。`)) return;
+        try {
+            await deleteCdk(id);
+            setCdks(cdks.filter(c => c.id !== id));
+        } catch (err) {
+            alert('删除凭证失败: ' + err.message);
         }
     };
 
@@ -224,6 +234,13 @@ export default function CdkManager() {
                                             onClick={() => handleToggle(cdk.id)}
                                         >
                                             {cdk.is_active ? '禁用' : '启用'}
+                                        </button>
+                                        <button
+                                            className="action-text-btn danger"
+                                            onClick={() => handleDelete(cdk.id, cdk.code)}
+                                            style={{ marginLeft: '10px' }}
+                                        >
+                                            删除
                                         </button>
                                     </td>
                                 </tr>
