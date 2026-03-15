@@ -153,11 +153,6 @@ export async function updateAbout(aboutData) {
 
 // ---- CDK Verify ----
 
-/**
- * 校验 CDK 凭证，获取 TOTP 验证码 + 教程 + 客服联系方式
- * @param {string} code - CDK 凭证码
- * @returns {{ success, code2fa, timeRemaining, tutorial, contactBase64 }}
- */
 export async function verifyCdk(code) {
     const res = await fetch(`${API_BASE}/cdk/verify`, {
         method: 'POST',
@@ -167,6 +162,19 @@ export async function verifyCdk(code) {
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'CDK 验证失败');
+    }
+    return res.json();
+}
+
+export async function refreshTotp(code) {
+    const res = await fetch(`${API_BASE}/cdk/refresh-totp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '刷新验证码失败');
     }
     return res.json();
 }
@@ -202,3 +210,14 @@ export async function toggleCdkStatus(id) {
     if (!res.ok) throw new Error('更新 CDK 状态失败');
     return res.json();
 }
+
+export async function updateCdkArticles(id, articleIds) {
+    const res = handle401(await fetch(`${API_BASE}/cdk/articles/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ article_ids: articleIds })
+    }));
+    if (!res.ok) throw new Error('更新教程关联失败');
+    return res.json();
+}
+

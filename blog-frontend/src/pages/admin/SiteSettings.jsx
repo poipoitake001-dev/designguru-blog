@@ -7,7 +7,9 @@ export default function SiteSettings() {
         site_name: '',
         hero_title: '',
         hero_subtitle: '',
-        logo_url: ''
+        logo_url: '',
+        contact_card_title: '',
+        contact_card_desc: ''
     });
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -19,7 +21,9 @@ export default function SiteSettings() {
                     site_name: data.site_name || '',
                     hero_title: data.hero_title || '',
                     hero_subtitle: data.hero_subtitle || '',
-                    logo_url: data.logo_url || ''
+                    logo_url: data.logo_url || '',
+                    contact_card_title: data.contact_card_title || '',
+                    contact_card_desc: data.contact_card_desc || ''
                 });
             })
             .catch(err => console.error(err));
@@ -121,6 +125,33 @@ export default function SiteSettings() {
                             placeholder="分享最新的前端技术..."
                             rows={3}
                         />
+                    </div>
+                </div>
+
+                <div className="form-section">
+                    <h3>客服引流卡片</h3>
+
+                    <div className="form-group">
+                        <label>卡片标题</label>
+                        <input
+                            name="contact_card_title"
+                            value={formData.contact_card_title}
+                            onChange={handleChange}
+                            placeholder="联系技术专员"
+                        />
+                        <span className="form-hint">前端悬浮客服卡片的主标题</span>
+                    </div>
+
+                    <div className="form-group">
+                        <label>卡片说明文字</label>
+                        <textarea
+                            name="contact_card_desc"
+                            value={formData.contact_card_desc}
+                            onChange={handleChange}
+                            placeholder="有问题直接联系企业微信技术专员..."
+                            rows={3}
+                        />
+                        <span className="form-hint">显示在卡片标题下方的灰色小字引导文本</span>
                     </div>
                 </div>
 

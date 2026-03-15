@@ -61,7 +61,7 @@ async function initDb() {
       )
     `);
 
-    // ── CDK 凭证表：存储 CDK 编码、TOTP 密钥、教程文本、客服联系方式 ──
+    // ── CDK 凭证表：存储 CDK 编码、TOTP 密钥、客服联系方式 ──
     await client.query(`
       CREATE TABLE IF NOT EXISTS cdk_codes (
         id             SERIAL PRIMARY KEY,
@@ -74,6 +74,17 @@ async function initDb() {
         is_active      BOOLEAN NOT NULL DEFAULT TRUE,
         created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         expires_at     TIMESTAMPTZ
+      )
+    `);
+
+    // ── CDK ↔ 教程多对多关联表 ──
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cdk_articles (
+        id         SERIAL PRIMARY KEY,
+        cdk_id     INTEGER NOT NULL REFERENCES cdk_codes(id) ON DELETE CASCADE,
+        article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(cdk_id, article_id)
       )
     `);
 
@@ -93,7 +104,9 @@ async function initDb() {
       site_name: 'DesignGuru',
       hero_title: '探索 设计与代码的边界',
       hero_subtitle: '分享最新的前端技术、Vanilla CSS 技巧以及具有高级质感的 UI/UX 教程',
-      logo_url: ''
+      logo_url: '',
+      contact_card_title: '联系技术专员',
+      contact_card_desc: '有问题直接联系企业微信技术专员，淘宝售前不负责解答产品问题'
     };
 
     for (const [key, value] of Object.entries(defaults)) {

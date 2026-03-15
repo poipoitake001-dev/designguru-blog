@@ -154,8 +154,33 @@
     color: var(--text-muted);
 }
 
-/* ---- 教程折叠 ---- */
-.result-tutorial {
+/* ---- 教程模块列表 ---- */
+.tutorial-modules {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.tutorial-modules-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    padding: 0 0.2rem;
+}
+
+.tutorial-count {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: rgba(59, 130, 246, 0.1);
+    padding: 0.2rem 0.65rem;
+    border-radius: 20px;
+}
+
+.tutorial-module {
     border-radius: 12px;
     overflow: hidden;
 }
@@ -163,20 +188,41 @@
 .tutorial-toggle {
     width: 100%;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 1rem 1.2rem;
+    gap: 0.6rem;
+    padding: 0.9rem 1.2rem;
     border: none;
     background: transparent;
     color: var(--text-color);
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
+    text-align: left;
+}
+
+.tutorial-index {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--accent-color, #3b82f6);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.tutorial-title {
+    flex: 1;
 }
 
 .toggle-arrow {
     transition: transform 0.25s ease;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
 }
 
 .toggle-arrow.open {
@@ -192,6 +238,7 @@
 
 .tutorial-body p { margin: 0 0 0.8rem; }
 .tutorial-body ol, .tutorial-body ul { padding-left: 1.4rem; }
+.tutorial-body img { max-width: 100%; border-radius: 8px; }
 
 /* ---- 响应式 ---- */
 @media (max-width: 640px) {
@@ -199,3 +246,4 @@
     .cdk-card { padding: 1.8rem 1.2rem; }
     .result-code { font-size: 2.2rem; letter-spacing: 5px; }
 }
+

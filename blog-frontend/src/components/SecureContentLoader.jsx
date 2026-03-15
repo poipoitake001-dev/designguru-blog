@@ -1,47 +1,73 @@
 /**
- * SecureContentLoader — CDK 凭证校验 + 动态渲染验证码与教程
+ * SecureContentLoader — CDK 凭证校验 + 动态渲染 2FA 验证密钥与教程模块
  *
  * 流程:
- *   1. 用户在输入框中输入 CDK（数字凭证）
- *   2. 前端 POST 到后端 /api/cdk/verify（后端本地 TOTP 生成，无外部请求）
- *   3. 后端校验 CDK → 使用 otplib 本地生成 6 位验证码 → 返回 JSON
- *   4. 前端销毁输入框，原位动态渲染 2FA 验证码、折叠教程、客服微信复制按钮
+ *   1. 用户输入 CDK → POST /api/cdk/verify
+ *   2. 后端返回 TOTP + 绑定教程列表 + 客服微信 Base64
+ *   3. 前端销毁输入框，原位渲染 2FA 密钥（自动刷新）+ 教程卡片列表 + 客服浮窗
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ContactObfuscator from './ContactObfuscator';
 import './SecureContentLoader.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export default function SecureContentLoader() {
-    // ──── 状态 ────
     const [cdk, setCdk] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [verified, setVerified] = useState(false);
     const [payload, setPayload] = useState(null);
-    const [tutorialOpen, setTutorialOpen] = useState(false);
     const [countdown, setCountdown] = useState(0);
+    const [expandedTutorials, setExpandedTutorials] = useState({});
     const containerRef = useRef(null);
+    const cdkRef = useRef('');           // 保留 CDK 码用于刷新
+    const refreshingRef = useRef(false); // 防并发刷新
 
-    // ──── TOTP 倒计时 ────
+    // ──── TOTP 倒计时 + 自动刷新 ────
     useEffect(() => {
         if (!verified || countdown <= 0) return;
         const timer = setInterval(() => {
             setCountdown(prev => {
-                if (prev <= 1) { clearInterval(timer); return 0; }
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    // 倒计时结束 → 自动刷新 TOTP
+                    handleRefreshTotp();
+                    return 0;
+                }
                 return prev - 1;
             });
         }, 1000);
         return () => clearInterval(timer);
     }, [verified, countdown]);
 
+    // ──── 刷新 TOTP（不增加使用计数）────
+    const handleRefreshTotp = useCallback(async () => {
+        if (refreshingRef.current) return;
+        refreshingRef.current = true;
+        try {
+            const res = await fetch(`${API_BASE}/cdk/refresh-totp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: cdkRef.current })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setPayload(prev => ({ ...prev, code2fa: data.code2fa }));
+                setCountdown(data.timeRemaining || 30);
+            }
+        } catch (err) {
+            console.error('TOTP refresh error:', err);
+        } finally {
+            refreshingRef.current = false;
+        }
+    }, []);
+
     // ──── 提交 CDK ────
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!cdk.trim()) { setError('请输入数字凭证'); return; }
-
         setLoading(true);
         setError('');
 
@@ -51,15 +77,10 @@ export default function SecureContentLoader() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code: cdk.trim() })
             });
-
             const data = await res.json();
+            if (!res.ok) { setError(data.error || '校验失败，请检查凭证'); return; }
 
-            if (!res.ok) {
-                setError(data.error || '校验失败，请检查凭证');
-                return;
-            }
-
-            // 校验成功 → 切换到渲染模式
+            cdkRef.current = cdk.trim();
             setPayload(data);
             setVerified(true);
             setCountdown(data.timeRemaining || 30);
@@ -69,6 +90,11 @@ export default function SecureContentLoader() {
         } finally {
             setLoading(false);
         }
+    };
+
+    // ──── 教程折叠 ────
+    const toggleTutorial = (id) => {
+        setExpandedTutorials(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
     // ──── 未验证：显示 CDK 输入框 ────
@@ -98,11 +124,7 @@ export default function SecureContentLoader() {
 
                         {error && <p className="cdk-error">{error}</p>}
 
-                        <button
-                            type="submit"
-                            className="cdk-submit-btn"
-                            disabled={loading}
-                        >
+                        <button type="submit" className="cdk-submit-btn" disabled={loading}>
                             {loading ? (
                                 <span className="btn-loading">
                                     <span className="spinner"></span> 校验中…
@@ -120,42 +142,51 @@ export default function SecureContentLoader() {
     }
 
     // ──── 已验证：动态渲染结果 ────
-    const { code2fa, tutorial, contactBase64 } = payload;
+    const { code2fa, tutorials = [], contactBase64 } = payload;
 
     return (
         <div className="secure-loader secure-result animate-fade-in" ref={containerRef}>
 
-            {/* ① 2FA 验证码 — 醒目展示 + 倒计时 */}
+            {/* ① 2FA 验证密钥 — 醒目展示 + 自动刷新倒计时 */}
             <div className="result-code-card glass-panel">
-                <span className="result-label">您的 2FA 验证码</span>
+                <span className="result-label">2FA 验证密钥</span>
                 <div className="result-code">{code2fa}</div>
                 <span className="result-expire">
                     {countdown > 0
-                        ? `${countdown} 秒后刷新，请尽快使用`
-                        : '验证码可能已过期，请重新校验'}
+                        ? `${countdown} 秒后自动刷新`
+                        : '正在刷新验证密钥…'}
                 </span>
             </div>
 
-            {/* ② 折叠/展开 教程区域 */}
-            {tutorial && (
-                <div className="result-tutorial glass-panel">
-                    <button
-                        className="tutorial-toggle"
-                        onClick={() => setTutorialOpen(!tutorialOpen)}
-                        aria-expanded={tutorialOpen}
-                    >
+            {/* ② 教程模块列表（从数据库文章绑定而来） */}
+            {tutorials.length > 0 && (
+                <div className="tutorial-modules">
+                    <div className="tutorial-modules-header">
                         <span>📖 使用教程</span>
-                        <span className={`toggle-arrow ${tutorialOpen ? 'open' : ''}`}>▼</span>
-                    </button>
-                    {tutorialOpen && (
-                        <div className="tutorial-body animate-fade-in">
-                            <div dangerouslySetInnerHTML={{ __html: tutorial }} />
+                        <span className="tutorial-count">{tutorials.length} 个模块</span>
+                    </div>
+                    {tutorials.map((tut, index) => (
+                        <div key={tut.id} className="tutorial-module glass-panel">
+                            <button
+                                className="tutorial-toggle"
+                                onClick={() => toggleTutorial(tut.id)}
+                                aria-expanded={!!expandedTutorials[tut.id]}
+                            >
+                                <span className="tutorial-index">#{index + 1}</span>
+                                <span className="tutorial-title">{tut.title}</span>
+                                <span className={`toggle-arrow ${expandedTutorials[tut.id] ? 'open' : ''}`}>▼</span>
+                            </button>
+                            {expandedTutorials[tut.id] && (
+                                <div className="tutorial-body animate-fade-in">
+                                    <div dangerouslySetInnerHTML={{ __html: tut.content }} />
+                                </div>
+                            )}
                         </div>
-                    )}
+                    ))}
                 </div>
             )}
 
-            {/* ③ 客服微信（Base64 解码 → 点击复制微信 ID，含设备自适应） */}
+            {/* ③ 客服微信浮窗 */}
             {contactBase64 && (
                 <ContactObfuscator encodedData={contactBase64} />
             )}
