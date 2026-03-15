@@ -9,10 +9,66 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticator } = require('otplib');
+const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { query, queryOne, run } = require('../database');
 const authMiddleware = require('../middleware/authMiddleware');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pure Node.js TOTP implementation (RFC 6238 — HMAC-SHA1, 6 digits, 30s step)
+// Zero external dependencies — replaces otplib which broke in v13
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Decode a Base32-encoded string into a Buffer.
+ */
+function base32Decode(encoded) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const stripped = encoded.replace(/[=\s]/g, '').toUpperCase();
+  let bits = '';
+  for (const ch of stripped) {
+    const idx = alphabet.indexOf(ch);
+    if (idx === -1) continue;
+    bits += idx.toString(2).padStart(5, '0');
+  }
+  const bytes = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) {
+    bytes.push(parseInt(bits.substring(i, i + 8), 2));
+  }
+  return Buffer.from(bytes);
+}
+
+/**
+ * Generate a 6-digit TOTP code from a Base32-encoded secret.
+ * Compatible with Google Authenticator / Authy.
+ */
+function generateTOTP(secret) {
+  const key = base32Decode(secret);
+  const epoch = Math.floor(Date.now() / 1000);
+  const counter = Math.floor(epoch / 30);
+
+  const counterBuf = Buffer.alloc(8);
+  counterBuf.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+  counterBuf.writeUInt32BE(counter & 0xFFFFFFFF, 4);
+
+  const hmac = crypto.createHmac('sha1', key).update(counterBuf).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const code = (
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff)
+  ) % 1000000;
+
+  return code.toString().padStart(6, '0');
+}
+
+/**
+ * Seconds remaining in the current 30-second TOTP window.
+ */
+function timeRemaining() {
+  return 30 - (Math.floor(Date.now() / 1000) % 30);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Rate limiter for CDK verify — max 10 attempts per 5 minutes per IP
@@ -65,17 +121,13 @@ router.post('/verify', cdkVerifyLimiter, async (req, res) => {
     }
 
     // ── 4. 本地 TOTP 生成（核心安全点：密钥永远不离开服务端）──
-    //
-    //   otplib 默认参数：
-    //     - algorithm: SHA1
+    //   使用 Node.js 内置 crypto 模块，RFC 6238 标准实现：
+    //     - algorithm: HMAC-SHA1
     //     - digits: 6
     //     - step: 30 秒
-    //   与 Google Authenticator / Authy 等标准兼容
-    //
-    const totpCode = authenticator.generate(cdk.totp_secret);
-
-    // 计算当前 TOTP 周期剩余秒数，方便前端倒计时
-    const timeRemaining = authenticator.timeRemaining();
+    //   与 Google Authenticator / Authy 完全兼容
+    const totpCode = generateTOTP(cdk.totp_secret);
+    const remaining = timeRemaining();
 
     // ── 5. 记录使用日志 ──
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -103,7 +155,7 @@ router.post('/verify', cdkVerifyLimiter, async (req, res) => {
     res.json({
       success: true,
       code2fa: totpCode,
-      timeRemaining,
+      timeRemaining: remaining,
       tutorial: cdk.tutorial_text || '',
       contactBase64: cdk.contact_base64 || '',
     });
