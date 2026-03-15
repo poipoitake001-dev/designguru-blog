@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchCdks, createCdk, toggleCdkStatus } from '../../services/api';
 import './CdkManager.css';
 
@@ -162,7 +163,7 @@ export default function CdkManager() {
             </div>
 
             {/* Create CDK Modal */}
-            {showCreateModal && (
+            {showCreateModal && createPortal(
                 <div className="modal-overlay">
                     <div className="modal-content admin-form glass-panel">
                         <h2>新建 CDK 凭证</h2>
@@ -259,7 +260,8 @@ export default function CdkManager() {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
