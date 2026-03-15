@@ -15,6 +15,8 @@ const authRoutes = require('./routes/auth');
 const cdkRoutes = require('./routes/cdk');
 
 const app = express();
+app.set('trust proxy', 1); // Enable trusting reverse proxy IP
+
 const PORT = process.env.PORT || 3001;
 const missingAuthConfig = getMissingAuthConfig();
 
@@ -60,12 +62,7 @@ const loginLimiter = rateLimit({
     message: { error: '登录尝试过多，请15分钟后再试' }
 });
 
-// CDK 校验接口限流 (20 次/15分钟)
-const cdkLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 20,
-    message: { error: '校验请求过于频繁，请稍后再试' }
-});
+// Removed global cdkLimiter because individual routes in cdk.js have distinct limiters
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -76,7 +73,7 @@ app.use('/api/auth', loginLimiter, authRoutes);
 app.use('/api/articles', articleRoutes);  // auth applied inside route file
 app.use('/api/upload', uploadRoutes);     // auth applied inside route file
 app.use('/api', settingsRoutes);          // auth applied inside route file
-app.use('/api/cdk', cdkLimiter, cdkRoutes);     // CDK 校验 + TOTP（含独立限流）
+app.use('/api/cdk', cdkRoutes);                 // CDK 校验 + TOTP（路由内部有独立限流）
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
