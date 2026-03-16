@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { fetchCdks, createCdk, toggleCdkStatus, deleteCdk, fetchTutorials, updateCdkArticles } from '../../services/api';
+import { fetchCdks, createCdk, updateCdk, toggleCdkStatus, deleteCdk, fetchTutorials, updateCdkArticles } from '../../services/api';
 import './CdkManager.css';
 
 export default function CdkManager() {
@@ -8,6 +8,7 @@ export default function CdkManager() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingCdkInfo, setEditingCdkInfo] = useState(null); // 正在编辑的 CDK（null = 新建模式）
     const [allArticles, setAllArticles] = useState([]);  // 所有可选教程
 
     // Form state
@@ -61,14 +62,21 @@ export default function CdkManager() {
 
         try {
             setCreateLoading(true);
-            await createCdk({
+            const payload = {
                 code: code.trim().toUpperCase(),
                 totp_secret: totpSecret.trim(),
                 contact_base64: contactBase64.trim(),
                 max_uses: Number(maxUses),
                 expires_days: Number(expiresDays),
-                article_ids: selectedArticleIds,
-            });
+            };
+
+            if (editingCdkInfo) {
+                // 编辑模式
+                await updateCdk(editingCdkInfo.id, payload);
+            } else {
+                // 新建模式
+                await createCdk({ ...payload, article_ids: selectedArticleIds });
+            }
             setShowCreateModal(false);
             resetForm();
             loadCdks();
@@ -106,6 +114,25 @@ export default function CdkManager() {
         setExpiresDays(0);
         setSelectedArticleIds([]);
         setCreateError('');
+        setEditingCdkInfo(null);
+    };
+
+    const openEditModal = (cdk) => {
+        setEditingCdkInfo(cdk);
+        setCode(cdk.code);
+        setTotpSecret(cdk.totp_secret || '');
+        setContactBase64(cdk.contact_base64 || '');
+        setMaxUses(cdk.max_uses || 0);
+        // 从 expires_at 倒推剩余天数
+        if (cdk.expires_at) {
+            const remaining = Math.max(0, Math.ceil((new Date(cdk.expires_at) - Date.now()) / 86400000));
+            setExpiresDays(remaining);
+        } else {
+            setExpiresDays(0);
+        }
+        setSelectedArticleIds([]);
+        setCreateError('');
+        setShowCreateModal(true);
     };
 
     const generateRandomTotpSecret = () => {
@@ -230,8 +257,15 @@ export default function CdkManager() {
                                     </td>
                                     <td>
                                         <button
+                                            className="action-text-btn"
+                                            onClick={() => openEditModal(cdk)}
+                                        >
+                                            编辑
+                                        </button>
+                                        <button
                                             className={`toggle-btn ${cdk.is_active ? 'active' : ''}`}
                                             onClick={() => handleToggle(cdk.id)}
+                                            style={{ marginLeft: '10px' }}
                                         >
                                             {cdk.is_active ? '禁用' : '启用'}
                                         </button>
@@ -259,7 +293,7 @@ export default function CdkManager() {
             {showCreateModal && createPortal(
                 <div className="modal-overlay">
                     <div className="modal-content admin-form glass-panel">
-                        <h2>新建 CDK 凭证</h2>
+                        <h2>{editingCdkInfo ? '编辑 CDK 凭证' : '新建 CDK 凭证'}</h2>
                         <form onSubmit={handleCreate}>
                             <div className="form-group row-group">
                                 <div className="flex-1">
@@ -294,21 +328,25 @@ export default function CdkManager() {
 
                             <div className="form-group">
                                 <label>联系客服微信 (Base64 编码 - 可选)</label>
-                                <input type="text" value={contactBase64} onChange={e => setContactBase64(e.target.value)} placeholder="输入您的微信号的 Base64 编码 (例如 d3hfaWQ=)" />
-                                <small>将微信号通过 btoa('WeChatID') 处理后的 Base64 字符串，前端将混淆处理。</small>
+                                <input type="text" value={contactBase64} onChange={e => setContactBase64(e.target.value)} placeholder="留空则自动使用【站点设置】配置的统一微信号" />
+                                <small>如不填写，验证时将自动使用站点设置中的全局默认客服微信 Base64。</small>
                             </div>
 
+                            {!editingCdkInfo && (
                             <div className="form-group">
                                 <label>绑定教程模块</label>
                                 <ArticleSelector selected={selectedArticleIds} setSelected={setSelectedArticleIds} />
                             </div>
+                            )}
 
                             {createError && <div className="error-text">{createError}</div>}
 
                             <div className="modal-actions">
                                 <button type="button" className="secondary-btn" onClick={() => { setShowCreateModal(false); resetForm(); }} disabled={createLoading}>取消</button>
                                 <button type="submit" className="primary-btn" disabled={createLoading}>
-                                    {createLoading ? '创建中...' : '确认创建'}
+                                    {createLoading
+                                        ? (editingCdkInfo ? '保存中...' : '创建中...')
+                                        : (editingCdkInfo ? '保存修改' : '确认创建')}
                                 </button>
                             </div>
                         </form>

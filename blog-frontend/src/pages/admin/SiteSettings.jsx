@@ -9,7 +9,8 @@ export default function SiteSettings() {
         hero_subtitle: '',
         logo_url: '',
         contact_card_title: '',
-        contact_card_desc: ''
+        contact_card_desc: '',
+        default_contact_base64: ''
     });
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -23,7 +24,8 @@ export default function SiteSettings() {
                     hero_subtitle: data.hero_subtitle || '',
                     logo_url: data.logo_url || '',
                     contact_card_title: data.contact_card_title || '',
-                    contact_card_desc: data.contact_card_desc || ''
+                    contact_card_desc: data.contact_card_desc || '',
+                    default_contact_base64: data.default_contact_base64 || ''
                 });
             })
             .catch(err => console.error(err));
@@ -152,6 +154,17 @@ export default function SiteSettings() {
                             rows={3}
                         />
                         <span className="form-hint">显示在卡片标题下方的灰色小字引导文本</span>
+                    </div>
+
+                    <div className="form-group">
+                        <label>全局统一客服微信 (Base64)</label>
+                        <input
+                            name="default_contact_base64"
+                            value={formData.default_contact_base64}
+                            onChange={handleChange}
+                            placeholder="如 btoa('your_wechat_id') 的结果"
+                        />
+                        <span className="form-hint">CDK 凭证未单独设置客服微信时，将自动使用此全局配置兜底</span>
                     </div>
                 </div>
 

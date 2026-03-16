@@ -202,6 +202,19 @@ export async function createCdk(cdkData) {
     return res.json();
 }
 
+export async function updateCdk(id, data) {
+    const res = handle401(await fetch(`${API_BASE}/cdk/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(data)
+    }));
+    if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || '更新 CDK 失败');
+    }
+    return res.json();
+}
+
 export async function deleteCdk(id) {
     const res = handle401(await fetch(`${API_BASE}/cdk/${id}`, {
         method: 'DELETE',

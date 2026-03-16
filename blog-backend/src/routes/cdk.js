@@ -144,12 +144,21 @@ router.post('/verify', cdkVerifyLimiter, async (req, res) => {
     // 获取绑定的教程列表
     const tutorials = await getLinkedArticles(cdk.id);
 
+    // Fallback: 如果 CDK 本身没有设置 contact_base64，则使用全局默认配置
+    let finalContactBase64 = cdk.contact_base64 || '';
+    if (!finalContactBase64) {
+      const globalSetting = await queryOne(
+        "SELECT value FROM site_settings WHERE key = 'default_contact_base64'"
+      );
+      finalContactBase64 = globalSetting?.value || '';
+    }
+
     res.json({
       success: true,
       code2fa: totpCode,
       timeRemaining: remaining,
       tutorials,
-      contactBase64: cdk.contact_base64 || '',
+      contactBase64: finalContactBase64,
     });
   } catch (err) {
     console.error('POST /api/cdk/verify error:', err);
@@ -239,7 +248,8 @@ router.post('/create', authMiddleware, async (req, res) => {
 router.get('/list', authMiddleware, async (req, res) => {
   try {
     const rows = await query(
-      `SELECT c.id, c.code, c.max_uses, c.used_count, c.is_active, c.created_at, c.expires_at,
+      `SELECT c.id, c.code, c.totp_secret, c.contact_base64,
+              c.max_uses, c.used_count, c.is_active, c.created_at, c.expires_at,
               COALESCE(
                 (SELECT json_agg(json_build_object('id', a.id, 'title', a.title) ORDER BY ca.sort_order)
                  FROM cdk_articles ca JOIN articles a ON a.id = ca.article_id
@@ -276,12 +286,60 @@ router.put('/toggle/:id', authMiddleware, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DELETE /api/cdk/:id — 管理员：删除 CDK
+// PUT /api/cdk/:id — 管理员：编辑 CDK 属性
+// ─────────────────────────────────────────────────────────────────────────────
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { code, totp_secret, contact_base64, max_uses, expires_days } = req.body;
+
+    if (!code || !totp_secret) {
+      return res.status(400).json({ error: 'CDK 编码 和 TOTP 密钥 为必填项' });
+    }
+
+    // 检查 CDK 是否存在
+    const existing = await queryOne('SELECT id FROM cdk_codes WHERE id = $1', [id]);
+    if (!existing) return res.status(404).json({ error: 'CDK 不存在' });
+
+    // 校验 code 是否与其他 CDK 重名（排除自身 ID）
+    const conflict = await queryOne(
+      'SELECT id FROM cdk_codes WHERE UPPER(code) = $1 AND id != $2',
+      [code.toUpperCase(), id]
+    );
+    if (conflict) return res.status(409).json({ error: '该 CDK 编码已被其他凭证使用' });
+
+    const expiresAt = expires_days > 0
+      ? new Date(Date.now() + expires_days * 86400000).toISOString()
+      : null;
+
+    await run(
+      `UPDATE cdk_codes
+       SET code = $1, totp_secret = $2, contact_base64 = $3,
+           max_uses = $4, expires_at = $5
+       WHERE id = $6`,
+      [code.toUpperCase(), totp_secret, contact_base64 || '', max_uses || 0, expiresAt, id]
+    );
+
+    res.json({ success: true, id: Number(id) });
+  } catch (err) {
+    console.error('PUT /api/cdk/:id error:', err);
+    res.status(500).json({ error: '更新 CDK 失败' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /api/cdk/:id — 管理员：删除 CDK（先清理子依赖）
 // ─────────────────────────────────────────────────────────────────────────────
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await run(`DELETE FROM cdk_codes WHERE id = $1 RETURNING id`, [id]);
+
+    // 先清理子表依赖，防止外键约束报错
+    await run('DELETE FROM cdk_usage_log WHERE cdk_id = $1', [id]);
+    await run('DELETE FROM cdk_articles WHERE cdk_id = $1', [id]);
+
+    // 删除主记录
+    const result = await run('DELETE FROM cdk_codes WHERE id = $1 RETURNING id', [id]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'CDK 不存在' });
     }
