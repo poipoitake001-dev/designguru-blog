@@ -46,16 +46,43 @@ function fmtTime(val) {
 
 const TIME_KEYS = new Set(['soldTime','openTime','createdAt','createTime']);
 
-/** 尝试从 cardData 字符串里解析 JSON，合并到 card 对象 */
+/**
+ * 兜底模板：当 API 没有返回某个字段时使用。
+ * 这些是该商品卡密的固定账单信息，与具体卡号无关。
+ * ── 如需修改，直接编辑这里的值即可 ──
+ */
+const CARD_FALLBACK = {
+    region:  '美国',
+    name:    'Kiarra Roach',
+    address: '4006 Cove Drive',
+    city:    'Waco',
+    state:   'TX',
+    zip:     '76705',
+    info:    '国家 United States',
+};
+
+/** 尝试从 cardData 字符串里解析 JSON，合并到 card 对象，并补充兜底字段 */
 function mergeCardData(card) {
-    if (!card || !card.cardData) return card;
-    try {
-        const parsed = JSON.parse(card.cardData);
-        if (parsed && typeof parsed === 'object') {
-            return { ...parsed, ...card }; // card 自带字段优先
+    let merged = { ...card };
+
+    // 尝试解析 cardData JSON
+    if (merged.cardData) {
+        try {
+            const parsed = JSON.parse(merged.cardData);
+            if (parsed && typeof parsed === 'object') {
+                merged = { ...parsed, ...merged }; // card 自带字段优先
+            }
+        } catch { /* cardData 不是 JSON，忽略 */ }
+    }
+
+    // 用兜底模板补全 API 没有返回的字段（API 返回的值永远优先）
+    for (const [key, val] of Object.entries(CARD_FALLBACK)) {
+        if (merged[key] === undefined || merged[key] === null || merged[key] === '') {
+            merged[key] = val;
         }
-    } catch { /* cardData 不是 JSON，忽略 */ }
-    return card;
+    }
+
+    return merged;
 }
 
 /* 单张卡片详情组件（白名单模式） */
