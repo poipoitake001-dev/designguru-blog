@@ -14,6 +14,8 @@ function RedeemPanel() {
     const [validating, setValidating] = useState(false);
     const [validateError, setValidateError] = useState('');
     const [productInfo, setProductInfo] = useState(null);
+    const [usedRecord, setUsedRecord] = useState(null);  // 已使用过、含历史卡密的记录
+    const [showUsedCards, setShowUsedCards] = useState(false);
 
     const [email, setEmail] = useState('');
     const [quantity, setQuantity] = useState(1);
@@ -35,11 +37,18 @@ function RedeemPanel() {
         setValidating(true);
         setValidateError('');
         setProductInfo(null);
+        setUsedRecord(null);
+        setShowUsedCards(false);
         try {
             const resp = await validateRedeemCode(code.trim());
             const payload = resp?.data ?? resp;
             if (!payload?.valid) {
-                setValidateError(payload?.message || resp?.message || '兑换码无效或已失效');
+                // 若 API 返回了历史卡密（兑换码已使用），展示查看记录功能
+                if (payload?.orderNo || payload?.cards?.length > 0) {
+                    setUsedRecord(payload);
+                } else {
+                    setValidateError(payload?.message || resp?.message || '兑换码无效或已失效');
+                }
                 return;
             }
             setProductInfo(payload);
@@ -114,6 +123,7 @@ function RedeemPanel() {
         setCards(null); setPolling(false);
         setValidateError(''); setSubmitError('');
         setPollStatus(''); setPollError('');
+        setUsedRecord(null); setShowUsedCards(false);
     };
 
     // ── 兑换成功：展示卡密 ──
@@ -184,6 +194,89 @@ function RedeemPanel() {
         );
     }
 
+    // ── 兑换码已使用：显示历史记录 ──
+    if (usedRecord) {
+        const histCards = usedRecord.cards || [];
+        const cardCount = histCards.length || usedRecord.quantity || 0;
+        return (
+            <div className="rdm-panel rdm-fade-in">
+                <div className="rdm-used-banner">
+                    <span className="rdm-used-icon">ℹ️</span>
+                    <span className="rdm-used-msg">{usedRecord.message || '兑换码已使用完'}</span>
+                </div>
+
+                {/* 基本信息 */}
+                <div className="rdm-used-info">
+                    {usedRecord.productName && (
+                        <div className="rdm-product-row">
+                            <span className="rdm-product-label">商品名称</span>
+                            <span className="rdm-product-value">{usedRecord.productName}</span>
+                        </div>
+                    )}
+                    {usedRecord.quantity !== undefined && (
+                        <div className="rdm-product-row">
+                            <span className="rdm-product-label">兑换数量</span>
+                            <span className="rdm-product-value">x{usedRecord.quantity}</span>
+                        </div>
+                    )}
+                    {cardCount > 0 && (
+                        <div className="rdm-product-row">
+                            <span className="rdm-product-label">已发卡数</span>
+                            <span className="rdm-product-value rdm-card-count">{cardCount} 张</span>
+                        </div>
+                    )}
+                    {usedRecord.orderNo && (
+                        <div className="rdm-product-row">
+                            <span className="rdm-product-label">订单号</span>
+                            <span className="rdm-product-value" style={{ fontSize: '0.78rem' }}>{usedRecord.orderNo}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* 查看已开卡记录按钮 */}
+                {histCards.length > 0 && (
+                    <button
+                        className="rdm-view-cards-btn"
+                        onClick={() => setShowUsedCards(v => !v)}
+                    >
+                        📋 {showUsedCards ? '收起' : `查看已开卡记录 (${histCards.length} 张)`}
+                    </button>
+                )}
+
+                {showUsedCards && (
+                    <ul className="rdm-card-list rdm-fade-in">
+                        {histCards.map((card, i) => {
+                            const copyText = typeof card === 'object'
+                                ? [card.cardNumber, card.cardPassword, card.expiry].filter(Boolean).join(' / ')
+                                : card;
+                            return (
+                                <li key={i} className="rdm-card-item">
+                                    <div className="rdm-card-fields">
+                                        {typeof card === 'object' ? (
+                                            <>
+                                                {card.cardNumber && <span><b>卡号：</b>{card.cardNumber}</span>}
+                                                {card.cardPassword && <span><b>密码：</b>{card.cardPassword}</span>}
+                                                {card.expiry && <span><b>有效期：</b>{card.expiry}</span>}
+                                            </>
+                                        ) : <code>{card}</code>}
+                                    </div>
+                                    <button
+                                        className="rdm-copy-btn"
+                                        onClick={() => navigator.clipboard.writeText(copyText)}
+                                    >复制</button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+
+                <button className="cdk-form__btn rdm-reset-btn" onClick={handleReset}>
+                    兑换其他码
+                </button>
+            </div>
+        );
+    }
+
     // ── 主表单 ──
     return (
         <div className="rdm-panel rdm-fade-in">
@@ -201,7 +294,7 @@ function RedeemPanel() {
                             type="text"
                             placeholder="请输入兑换码，如 XXXX-XXXX-XXXX-XXXX"
                             value={code}
-                            onChange={e => { setCode(e.target.value); setProductInfo(null); }}
+                            onChange={e => { setCode(e.target.value); setProductInfo(null); setUsedRecord(null); }}
                             disabled={!!productInfo}
                         />
                         <button
