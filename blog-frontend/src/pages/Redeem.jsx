@@ -1,38 +1,47 @@
-import React, { useState } from 'react';
-import { validateRedeemCode, submitRedeem } from '../services/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { validateRedeemCode, submitRedeem, getRedeemTaskStatus } from '../services/api';
 import './Redeem.css';
+
+// deliveryStatus: 0=待发卡, 1=发卡中, 2=完成, 3=失败
+const DELIVERY_LABELS = { 0: '待发卡', 1: '发卡中...', 2: '已完成', 3: '发卡失败' };
 
 export default function Redeem() {
     // Step 1: validate
     const [code, setCode] = useState('');
     const [validating, setValidating] = useState(false);
     const [validateError, setValidateError] = useState('');
-    const [productInfo, setProductInfo] = useState(null); // 验证成功后的商品信息
+    const [productInfo, setProductInfo] = useState(null);
 
     // Step 2: submit
     const [email, setEmail] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState('');
-    const [result, setResult] = useState(null); // 兑换成功后的结果
 
+    // Async polling state
+    const [orderInfo, setOrderInfo] = useState(null);   // after submit success
+    const [polling, setPolling] = useState(false);
+    const [pollStatus, setPollStatus] = useState('');   // human-readable status
+    const [cards, setCards] = useState(null);           // final cards
+    const [pollError, setPollError] = useState('');
+    const pollTimer = useRef(null);
+
+    // Cleanup timer on unmount
+    useEffect(() => () => clearTimeout(pollTimer.current), []);
+
+    // ── Step 1: Validate ──
     const handleValidate = async (e) => {
         e.preventDefault();
-        if (!code.trim()) {
-            setValidateError('请输入兑换码');
-            return;
-        }
+        if (!code.trim()) { setValidateError('请输入兑换码'); return; }
         setValidating(true);
         setValidateError('');
         setProductInfo(null);
         try {
             const resp = await validateRedeemCode(code.trim());
-            // 兼容两种返回格式：
-            // 1. 直接返回：{ valid, message, productName, ... }
-            // 2. 包装返回：{ code, message, data: { valid, productName, ... } }
-            const payload = (resp && resp.data && typeof resp.data === 'object') ? resp.data : resp;
-            if (!payload.valid) {
-                setValidateError(payload.message || resp.message || '兑换码无效');
+            // resp = { code: 200, message, data: { valid, productName, ... } }
+            const payload = resp?.data ?? resp;
+            if (!payload?.valid) {
+                setValidateError(payload?.message || resp?.message || '兑换码无效或已失效');
                 return;
             }
             setProductInfo(payload);
@@ -43,21 +52,27 @@ export default function Redeem() {
         }
     };
 
+    // ── Step 2: Submit & start polling ──
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!email.trim()) {
-            setSubmitError('请输入联系邮箱');
-            return;
-        }
+        if (!email.trim()) { setSubmitError('请输入联系邮箱'); return; }
         setSubmitting(true);
         setSubmitError('');
         try {
             const resp = await submitRedeem(code.trim(), email.trim(), quantity);
-            // 兼容包装格式：{ code, message, data: { cards, orderNo, ... } }
-            const normalized = (resp && resp.data && typeof resp.data === 'object')
-                ? { ...resp, data: resp.data }
-                : { data: resp };
-            setResult(normalized);
+            // resp = { code: 200, message, data: { orderNo, taskId, deliveryStatus, ... } }
+            const data = resp?.data ?? resp;
+            setOrderInfo(data);
+
+            if (data.deliveryStatus === 2 && data.cards?.length > 0) {
+                // Immediately available (rare)
+                setCards(data.cards);
+            } else if (data.taskId) {
+                // Start polling
+                startPolling(data.taskId, data.deliveryStatus);
+            } else {
+                setPollStatus(DELIVERY_LABELS[data.deliveryStatus] || '发卡中...');
+            }
         } catch (err) {
             setSubmitError(err.message);
         } finally {
@@ -65,16 +80,147 @@ export default function Redeem() {
         }
     };
 
-    const handleReset = () => {
-        setCode('');
-        setEmail('');
-        setQuantity(1);
-        setProductInfo(null);
-        setResult(null);
-        setValidateError('');
-        setSubmitError('');
+    const startPolling = (taskId, initialStatus) => {
+        setPolling(true);
+        setPollStatus(DELIVERY_LABELS[initialStatus] ?? '发卡中...');
+        setPollError('');
+        poll(taskId, 0);
     };
 
+    const poll = (taskId, attempt) => {
+        if (attempt > 40) {
+            // ~2 min timeout
+            setPolling(false);
+            setPollError('发卡超时，请联系客服或稍后在订单查询中查看。');
+            return;
+        }
+        pollTimer.current = setTimeout(async () => {
+            try {
+                const resp = await getRedeemTaskStatus(taskId);
+                const data = resp?.data ?? resp;
+                const status = data?.status ?? data?.deliveryStatus;
+                setPollStatus(DELIVERY_LABELS[status] ?? '发卡中...');
+
+                if (status === 2 && data.cards?.length > 0) {
+                    setPolling(false);
+                    setCards(data.cards);
+                } else if (status === 3) {
+                    setPolling(false);
+                    setPollError('发卡失败，请联系客服处理。');
+                } else {
+                    poll(taskId, attempt + 1);
+                }
+            } catch (err) {
+                // Network error: retry
+                poll(taskId, attempt + 1);
+            }
+        }, 3000);
+    };
+
+    const handleReset = () => {
+        clearTimeout(pollTimer.current);
+        setCode(''); setEmail(''); setQuantity(1);
+        setProductInfo(null); setOrderInfo(null);
+        setCards(null); setPolling(false);
+        setValidateError(''); setSubmitError('');
+        setPollStatus(''); setPollError('');
+    };
+
+    // ── Result: cards ──
+    if (cards) {
+        return (
+            <div className="redeem-page">
+                <div className="redeem-hero">
+                    <div className="redeem-icon">🎁</div>
+                    <h1>卡密兑换</h1>
+                </div>
+                <div className="redeem-container">
+                    <div className="redeem-result animate-fade-in">
+                        <div className="result-success-icon">✅</div>
+                        <h2>兑换成功！</h2>
+                        {orderInfo?.orderNo && (
+                            <p className="result-order">订单号：<span>{orderInfo.orderNo}</span></p>
+                        )}
+                        <div className="result-cards">
+                            <p className="result-hint">以下是您兑换到的卡密，请妥善保存：</p>
+                            <ul className="card-list">
+                                {cards.map((card, i) => {
+                                    const display = typeof card === 'object'
+                                        ? [card.cardNumber, card.cardPassword, card.expiry].filter(Boolean).join(' / ')
+                                        : card;
+                                    return (
+                                        <li key={i} className="card-item">
+                                            <div className="card-fields">
+                                                {typeof card === 'object' ? (
+                                                    <>
+                                                        {card.cardNumber && <span><b>卡号：</b>{card.cardNumber}</span>}
+                                                        {card.cardPassword && <span><b>密码：</b>{card.cardPassword}</span>}
+                                                        {card.expiry && <span><b>有效期：</b>{card.expiry}</span>}
+                                                    </>
+                                                ) : (
+                                                    <code>{card}</code>
+                                                )}
+                                            </div>
+                                            <button
+                                                className="copy-btn"
+                                                onClick={() => navigator.clipboard.writeText(display)}
+                                            >
+                                                复制
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                        <button className="primary-btn redeem-reset-btn" onClick={handleReset}>
+                            再次兑换
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Result: polling / waiting ──
+    if (orderInfo && !cards) {
+        return (
+            <div className="redeem-page">
+                <div className="redeem-hero">
+                    <div className="redeem-icon">🎁</div>
+                    <h1>卡密兑换</h1>
+                </div>
+                <div className="redeem-container">
+                    <div className="redeem-card animate-fade-in" style={{ textAlign: 'center' }}>
+                        {pollError ? (
+                            <>
+                                <div style={{ fontSize: '2.5rem' }}>⚠️</div>
+                                <h3 style={{ color: '#ef4444', margin: '0.75rem 0' }}>{pollError}</h3>
+                                {orderInfo.orderNo && (
+                                    <p className="result-order" style={{ textAlign: 'center' }}>
+                                        订单号：<span>{orderInfo.orderNo}</span>
+                                    </p>
+                                )}
+                                <button className="primary-btn redeem-reset-btn" onClick={handleReset} style={{ marginTop: '1rem' }}>
+                                    返回重试
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="poll-spinner" />
+                                <h3 className="poll-label">{pollStatus || '发卡中...'}</h3>
+                                <p className="result-hint">发卡系统处理中，请稍候，请勿关闭页面</p>
+                                {orderInfo.orderNo && (
+                                    <p className="result-order">订单号：<span>{orderInfo.orderNo}</span></p>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Main form ──
     return (
         <div className="redeem-page">
             <div className="redeem-hero">
@@ -84,151 +230,95 @@ export default function Redeem() {
             </div>
 
             <div className="redeem-container">
-                {/* ── 兑换成功结果 ── */}
-                {result ? (
-                    <div className="redeem-result animate-fade-in">
-                        <div className="result-success-icon">✅</div>
-                        <h2>兑换成功！</h2>
-                        {result.data && (
-                            <div className="result-cards">
-                                {Array.isArray(result.data.cards) && result.data.cards.length > 0 ? (
-                                    <>
-                                        <p className="result-hint">以下是您兑换到的卡密，请妥善保存：</p>
-                                        <ul className="card-list">
-                                            {result.data.cards.map((card, i) => (
-                                                <li key={i} className="card-item">
-                                                    <code>{typeof card === 'object' ? JSON.stringify(card) : card}</code>
-                                                    <button
-                                                        className="copy-btn"
-                                                        onClick={() => {
-                                                            const text = typeof card === 'object' ? JSON.stringify(card) : card;
-                                                            navigator.clipboard.writeText(text);
-                                                        }}
-                                                    >
-                                                        复制
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </>
-                                ) : (
-                                    <pre className="result-raw">{JSON.stringify(result.data, null, 2)}</pre>
-                                )}
-                                {result.data.orderNo && (
-                                    <p className="result-order">订单号：<span>{result.data.orderNo}</span></p>
-                                )}
-                            </div>
-                        )}
-                        <button className="primary-btn redeem-reset-btn" onClick={handleReset}>
-                            再次兑换
-                        </button>
+                {/* Step 1 */}
+                <div className={`redeem-card animate-fade-in ${productInfo ? 'completed' : ''}`}>
+                    <div className="step-label">
+                        <span className="step-num">1</span>
+                        验证兑换码
+                        {productInfo && <span className="step-done">✔</span>}
                     </div>
-                ) : (
-                    <>
-                        {/* ── Step 1: 验证兑换码 ── */}
-                        <div className={`redeem-card animate-fade-in ${productInfo ? 'completed' : ''}`}>
-                            <div className="step-label">
-                                <span className="step-num">1</span>
-                                验证兑换码
-                                {productInfo && <span className="step-done">✔</span>}
-                            </div>
-                            <form onSubmit={handleValidate} className="redeem-form">
-                                <div className="input-row">
-                                    <input
-                                        type="text"
-                                        className="redeem-input"
-                                        placeholder="请输入兑换码，如 XXX-XXXX-XXXX-XXXX"
-                                        value={code}
-                                        onChange={e => { setCode(e.target.value); setProductInfo(null); setSubmitError(''); }}
-                                        disabled={!!productInfo}
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="primary-btn"
-                                        disabled={validating || !!productInfo}
-                                    >
-                                        {validating ? '验证中...' : '验证'}
-                                    </button>
+                    <form onSubmit={handleValidate} className="redeem-form">
+                        <div className="input-row">
+                            <input
+                                type="text"
+                                className="redeem-input"
+                                placeholder="请输入兑换码，如 XXXX-XXXX-XXXX-XXXX"
+                                value={code}
+                                onChange={e => { setCode(e.target.value); setProductInfo(null); }}
+                                disabled={!!productInfo}
+                            />
+                            <button type="submit" className="primary-btn" disabled={validating || !!productInfo}>
+                                {validating ? '验证中...' : '验证'}
+                            </button>
+                        </div>
+                        {validateError && <p className="redeem-error">{validateError}</p>}
+                        {productInfo && (
+                            <div className="product-info animate-fade-in">
+                                <div className="product-info-row">
+                                    <span className="info-label">商品名称</span>
+                                    <span className="info-value">{productInfo.productName || '—'}</span>
                                 </div>
-                                {validateError && <p className="redeem-error">{validateError}</p>}
-                                {productInfo && (
-                                    <div className="product-info animate-fade-in">
-                                        <div className="product-info-row">
-                                            <span className="info-label">商品名称</span>
-                                            <span className="info-value">{productInfo.productName || '—'}</span>
-                                        </div>
-                                        <div className="product-info-row">
-                                            <span className="info-label">可兑换数量</span>
-                                            <span className="info-value">{productInfo.quantity ?? '—'}</span>
-                                        </div>
-                                        {productInfo.remainingQuantity !== undefined && (
-                                            <div className="product-info-row">
-                                                <span className="info-label">剩余库存</span>
-                                                <span className="info-value">{productInfo.remainingQuantity}</span>
-                                            </div>
-                                        )}
-                                        {productInfo.expireTime && (
-                                            <div className="product-info-row">
-                                                <span className="info-label">过期时间</span>
-                                                <span className="info-value">{productInfo.expireTime}</span>
-                                            </div>
-                                        )}
-                                        <button
-                                            type="button"
-                                            className="link-btn change-btn"
-                                            onClick={() => { setProductInfo(null); setSubmitError(''); }}
-                                        >
-                                            更换兑换码
-                                        </button>
+                                <div className="product-info-row">
+                                    <span className="info-label">可兑换数量</span>
+                                    <span className="info-value">{productInfo.quantity ?? '—'}</span>
+                                </div>
+                                {productInfo.remainingQuantity !== undefined && (
+                                    <div className="product-info-row">
+                                        <span className="info-label">剩余库存</span>
+                                        <span className="info-value">{productInfo.remainingQuantity}</span>
                                     </div>
                                 )}
-                            </form>
-                        </div>
-
-                        {/* ── Step 2: 填写信息并兑换 ── */}
-                        {productInfo && (
-                            <div className="redeem-card animate-fade-in">
-                                <div className="step-label">
-                                    <span className="step-num">2</span>
-                                    填写兑换信息
-                                </div>
-                                <form onSubmit={handleSubmit} className="redeem-form">
-                                    <label className="redeem-label">联系邮箱 <span className="required">*</span></label>
-                                    <input
-                                        type="email"
-                                        className="redeem-input"
-                                        placeholder="用于接收兑换结果通知"
-                                        value={email}
-                                        onChange={e => setEmail(e.target.value)}
-                                        required
-                                    />
-
-                                    {productInfo.quantity > 1 && (
-                                        <>
-                                            <label className="redeem-label">兑换数量</label>
-                                            <input
-                                                type="number"
-                                                className="redeem-input redeem-input-sm"
-                                                min={1}
-                                                max={productInfo.quantity}
-                                                value={quantity}
-                                                onChange={e => setQuantity(Number(e.target.value))}
-                                            />
-                                        </>
-                                    )}
-
-                                    {submitError && <p className="redeem-error">{submitError}</p>}
-                                    <button
-                                        type="submit"
-                                        className="primary-btn redeem-submit-btn"
-                                        disabled={submitting}
-                                    >
-                                        {submitting ? '兑换中...' : '确认兑换'}
-                                    </button>
-                                </form>
+                                {productInfo.expireTime && (
+                                    <div className="product-info-row">
+                                        <span className="info-label">过期时间</span>
+                                        <span className="info-value">{productInfo.expireTime}</span>
+                                    </div>
+                                )}
+                                <button type="button" className="link-btn change-btn"
+                                    onClick={() => setProductInfo(null)}>
+                                    更换兑换码
+                                </button>
                             </div>
                         )}
-                    </>
+                    </form>
+                </div>
+
+                {/* Step 2 */}
+                {productInfo && (
+                    <div className="redeem-card animate-fade-in">
+                        <div className="step-label">
+                            <span className="step-num">2</span>
+                            填写兑换信息
+                        </div>
+                        <form onSubmit={handleSubmit} className="redeem-form">
+                            <label className="redeem-label">联系邮箱 <span className="required">*</span></label>
+                            <input
+                                type="email"
+                                className="redeem-input"
+                                placeholder="用于接收兑换结果通知"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                required
+                            />
+                            {productInfo.quantity > 1 && (
+                                <>
+                                    <label className="redeem-label">兑换数量</label>
+                                    <input
+                                        type="number"
+                                        className="redeem-input redeem-input-sm"
+                                        min={1}
+                                        max={productInfo.quantity}
+                                        value={quantity}
+                                        onChange={e => setQuantity(Number(e.target.value))}
+                                    />
+                                </>
+                            )}
+                            {submitError && <p className="redeem-error">{submitError}</p>}
+                            <button type="submit" className="primary-btn redeem-submit-btn" disabled={submitting}>
+                                {submitting ? '提交中...' : '确认兑换'}
+                            </button>
+                        </form>
+                    </div>
                 )}
             </div>
         </div>

@@ -254,7 +254,7 @@ export async function validateRedeemCode(code) {
     return res.json();
 }
 
-export async function submitRedeem(code, contactEmail, quantity = 1) {
+export async function submitRedeem(code, contactEmail = '', quantity = 1) {
     const res = await fetch(`${API_BASE}/redeem/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -263,6 +263,24 @@ export async function submitRedeem(code, contactEmail, quantity = 1) {
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || '兑换失败');
+    }
+    return res.json();
+}
+
+export async function getRedeemTaskStatus(taskId) {
+    const res = await fetch(`${API_BASE}/redeem/task-status/${encodeURIComponent(taskId)}`);
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '查询任务状态失败');
+    }
+    return res.json();
+}
+
+export async function getRedeemOrderStatus(orderNo) {
+    const res = await fetch(`${API_BASE}/redeem/order-status/${encodeURIComponent(orderNo)}`);
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '查询订单状态失败');
     }
     return res.json();
 }
