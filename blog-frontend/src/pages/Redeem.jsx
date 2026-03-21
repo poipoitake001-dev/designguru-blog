@@ -26,12 +26,16 @@ export default function Redeem() {
         setValidateError('');
         setProductInfo(null);
         try {
-            const data = await validateRedeemCode(code.trim());
-            if (!data.valid) {
-                setValidateError(data.message || '兑换码无效');
+            const resp = await validateRedeemCode(code.trim());
+            // 兼容两种返回格式：
+            // 1. 直接返回：{ valid, message, productName, ... }
+            // 2. 包装返回：{ code, message, data: { valid, productName, ... } }
+            const payload = (resp && resp.data && typeof resp.data === 'object') ? resp.data : resp;
+            if (!payload.valid) {
+                setValidateError(payload.message || resp.message || '兑换码无效');
                 return;
             }
-            setProductInfo(data);
+            setProductInfo(payload);
         } catch (err) {
             setValidateError(err.message);
         } finally {
@@ -48,8 +52,12 @@ export default function Redeem() {
         setSubmitting(true);
         setSubmitError('');
         try {
-            const data = await submitRedeem(code.trim(), email.trim(), quantity);
-            setResult(data);
+            const resp = await submitRedeem(code.trim(), email.trim(), quantity);
+            // 兼容包装格式：{ code, message, data: { cards, orderNo, ... } }
+            const normalized = (resp && resp.data && typeof resp.data === 'object')
+                ? { ...resp, data: resp.data }
+                : { data: resp };
+            setResult(normalized);
         } catch (err) {
             setSubmitError(err.message);
         } finally {
