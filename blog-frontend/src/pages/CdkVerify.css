@@ -863,4 +863,121 @@
   color: #667eea;
 }
 
+/* ═══════ 卡片详情表格样式 ═══════ */
+
+.rdm-card-detail-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rdm-card-detail-item {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.rdm-card-index {
+  padding: 0.4rem 1rem;
+  background: rgba(102,126,234,0.15);
+  border-bottom: 1px solid rgba(102,126,234,0.2);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.rdm-card-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rdm-card-row {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.rdm-card-row:last-child {
+  border-bottom: none;
+}
+
+.rdm-card-row__label {
+  padding: 0.6rem 1rem;
+  font-size: 0.83rem;
+  color: #8890a4;
+  white-space: nowrap;
+  width: 90px;
+  vertical-align: middle;
+}
+
+.rdm-card-row__value {
+  padding: 0.6rem 0.5rem;
+  font-size: 0.88rem;
+  color: #e0e0e0;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  word-break: break-all;
+  vertical-align: middle;
+}
+
+.rdm-val-highlight {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.rdm-val-green {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.rdm-card-row__copy {
+  padding: 0.6rem 0.75rem 0.6rem 0;
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.rdm-field-copy-btn {
+  background: none;
+  border: none;
+  color: #8890a4;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+}
+
+.rdm-field-copy-btn:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+}
+
+.rdm-card-copyall-row {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.rdm-copyall-btn {
+  background: rgba(102,126,234,0.1);
+  border: 1px solid rgba(102,126,234,0.25);
+  color: #667eea;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.rdm-copyall-btn:hover {
+  background: rgba(102,126,234,0.2);
+}
+
+
 

@@ -6,6 +6,102 @@ import './CdkVerify.css';
 // deliveryStatus / task status: 0=待发卡, 1=发卡中, 2=完成, 3=失败
 const DELIVERY_LABELS = { 0: '待发卡', 1: '发卡中...', 2: '已完成', 3: '发卡失败' };
 
+// 字段名 → 中文标签映射（按展示顺序）
+const FIELD_LABELS = [
+    ['cardNumber',     '卡号'],
+    ['expiry',         '有效期'],
+    ['cardPassword',   'CVV'],
+    ['cvv',            'CVV'],
+    ['openTime',       '开卡时间'],
+    ['createdAt',      '开卡时间'],
+    ['remainingTime',  '剩余时间'],
+    ['region',         '地区'],
+    ['country',        '地区'],
+    ['name',           '姓名'],
+    ['address',        '地址'],
+    ['city',           '城市'],
+    ['state',          '州'],
+    ['zip',            '邮编'],
+    ['zipCode',        '邮编'],
+    ['info',           '信息'],
+    ['remark',         '备注'],
+];
+
+// 高亮字段（金色）
+const HIGHLIGHT_KEYS = new Set(['cardNumber', 'cardPassword', 'cvv']);
+// 绿色字段（剩余时间）
+const GREEN_KEYS = new Set(['remainingTime']);
+
+/* 单张卡片详情组件 */
+function CardDetail({ card, index }) {
+    if (typeof card !== 'object' || card === null) {
+        return (
+            <li className="rdm-card-item">
+                <div className="rdm-card-fields"><code>{card}</code></div>
+                <button className="rdm-copy-btn"
+                    onClick={() => navigator.clipboard.writeText(card)}>复制</button>
+            </li>
+        );
+    }
+
+    // 已知字段按顺序排列，未知字段附在后面
+    const knownKeys = FIELD_LABELS.map(([k]) => k);
+    const unknownEntries = Object.entries(card).filter(
+        ([k]) => !knownKeys.includes(k) && k !== 'cardData'
+    );
+
+    const orderedEntries = [
+        ...FIELD_LABELS.filter(([k]) => card[k] !== undefined && card[k] !== null && card[k] !== ''),
+        ...unknownEntries.map(([k, v]) => [k, String(k)])
+    ];
+
+    // 복사 전체
+    const copyAll = orderedEntries
+        .map(([k, label]) => {
+            const realLabel = FIELD_LABELS.find(([fk]) => fk === k)?.[1] ?? label;
+            return `${realLabel}: ${card[k]}`;
+        })
+        .join('\n');
+
+    return (
+        <li className="rdm-card-detail-item">
+            {index !== undefined && <div className="rdm-card-index">#{index + 1}</div>}
+            <table className="rdm-card-table">
+                <tbody>
+                    {orderedEntries.map(([key]) => {
+                        const labelEntry = FIELD_LABELS.find(([k]) => k === key);
+                        const label = labelEntry ? labelEntry[1] : key;
+                        const value = String(card[key]);
+                        const isHighlight = HIGHLIGHT_KEYS.has(key);
+                        const isGreen = GREEN_KEYS.has(key);
+                        return (
+                            <tr key={key} className="rdm-card-row">
+                                <td className="rdm-card-row__label">{label}</td>
+                                <td className={`rdm-card-row__value ${isHighlight ? 'rdm-val-highlight' : ''} ${isGreen ? 'rdm-val-green' : ''}`}>
+                                    {value}
+                                </td>
+                                <td className="rdm-card-row__copy">
+                                    <button
+                                        className="rdm-field-copy-btn"
+                                        title="复制"
+                                        onClick={() => navigator.clipboard.writeText(value)}
+                                    >⧉</button>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+            <div className="rdm-card-copyall-row">
+                <button
+                    className="rdm-copyall-btn"
+                    onClick={() => navigator.clipboard.writeText(copyAll)}
+                >⧉ 复制全部</button>
+            </div>
+        </li>
+    );
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    RedeemPanel — 卡密兑换面板（融合进 CdkVerify 深色主题）
 ───────────────────────────────────────────────────────────────────────────── */
@@ -136,29 +232,8 @@ function RedeemPanel() {
                     <p className="rdm-result__order">订单号：<span>{orderInfo.orderNo}</span></p>
                 )}
                 <p className="rdm-result__hint">以下是您兑换到的卡密，请妥善保存：</p>
-                <ul className="rdm-card-list">
-                    {cards.map((card, i) => {
-                        const copyText = typeof card === 'object'
-                            ? [card.cardNumber, card.cardPassword, card.expiry].filter(Boolean).join(' / ')
-                            : card;
-                        return (
-                            <li key={i} className="rdm-card-item">
-                                <div className="rdm-card-fields">
-                                    {typeof card === 'object' ? (
-                                        <>
-                                            {card.cardNumber && <span><b>卡号：</b>{card.cardNumber}</span>}
-                                            {card.cardPassword && <span><b>密码：</b>{card.cardPassword}</span>}
-                                            {card.expiry && <span><b>有效期：</b>{card.expiry}</span>}
-                                        </>
-                                    ) : <code>{card}</code>}
-                                </div>
-                                <button
-                                    className="rdm-copy-btn"
-                                    onClick={() => navigator.clipboard.writeText(copyText)}
-                                >复制</button>
-                            </li>
-                        );
-                    })}
+                <ul className="rdm-card-detail-list">
+                    {cards.map((card, i) => <CardDetail key={i} card={card} index={cards.length > 1 ? i : undefined} />)}
                 </ul>
                 <button className="cdk-form__btn rdm-reset-btn" onClick={handleReset}>再次兑换</button>
             </div>
@@ -244,29 +319,8 @@ function RedeemPanel() {
                 )}
 
                 {showUsedCards && (
-                    <ul className="rdm-card-list rdm-fade-in">
-                        {histCards.map((card, i) => {
-                            const copyText = typeof card === 'object'
-                                ? [card.cardNumber, card.cardPassword, card.expiry].filter(Boolean).join(' / ')
-                                : card;
-                            return (
-                                <li key={i} className="rdm-card-item">
-                                    <div className="rdm-card-fields">
-                                        {typeof card === 'object' ? (
-                                            <>
-                                                {card.cardNumber && <span><b>卡号：</b>{card.cardNumber}</span>}
-                                                {card.cardPassword && <span><b>密码：</b>{card.cardPassword}</span>}
-                                                {card.expiry && <span><b>有效期：</b>{card.expiry}</span>}
-                                            </>
-                                        ) : <code>{card}</code>}
-                                    </div>
-                                    <button
-                                        className="rdm-copy-btn"
-                                        onClick={() => navigator.clipboard.writeText(copyText)}
-                                    >复制</button>
-                                </li>
-                            );
-                        })}
+                    <ul className="rdm-card-detail-list rdm-fade-in">
+                        {histCards.map((card, i) => <CardDetail key={i} card={card} index={histCards.length > 1 ? i : undefined} />)}
                     </ul>
                 )}
 
