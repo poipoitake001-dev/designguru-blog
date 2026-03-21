@@ -13,6 +13,8 @@ const uploadRoutes = require('./routes/upload');
 const settingsRoutes = require('./routes/settings');
 const authRoutes = require('./routes/auth');
 const cdkRoutes = require('./routes/cdk');
+const redeemRoutes = require('./routes/redeem');
+
 
 const app = express();
 app.set('trust proxy', 1); // Enable trusting reverse proxy IP
@@ -74,6 +76,8 @@ app.use('/api/articles', articleRoutes);  // auth applied inside route file
 app.use('/api/upload', uploadRoutes);     // auth applied inside route file
 app.use('/api', settingsRoutes);          // auth applied inside route file
 app.use('/api/cdk', cdkRoutes);                 // CDK 校验 + TOTP（路由内部有独立限流）
+app.use('/api/redeem', redeemRoutes);           // 第三方发卡网兑换代理
+
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

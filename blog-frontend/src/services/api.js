@@ -243,3 +243,26 @@ export async function updateCdkArticles(id, articleIds) {
     return res.json();
 }
 
+// ---- 卡密兑换（代理到第三方发卡网） ----
+
+export async function validateRedeemCode(code) {
+    const res = await fetch(`${API_BASE}/redeem/validate?code=${encodeURIComponent(code)}`);
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '兑换码验证失败');
+    }
+    return res.json();
+}
+
+export async function submitRedeem(code, contactEmail, quantity = 1) {
+    const res = await fetch(`${API_BASE}/redeem/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, contactEmail, quantity }),
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '兑换失败');
+    }
+    return res.json();
+}

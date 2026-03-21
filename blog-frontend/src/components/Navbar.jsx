@@ -78,6 +78,12 @@ export default function Navbar() {
                             {item.label}
                         </Link>
                     ))}
+                    <Link
+                        to="/redeem"
+                        className={`nav-link nav-link-redeem ${isCurrent('/redeem')}`}
+                    >
+                        🎁 卡密兑换
+                    </Link>
                 </nav>
 
                 <div className="navbar-actions">

@@ -141,3 +141,13 @@
 }
 
 /* Responsive details omitted for brevity, focusing on Desktop first due to UI requirement */
+
+/* 卡密兑换 nav link accent */
+.nav-link-redeem {
+    color: var(--accent-color, #6c63ff) !important;
+    font-weight: 600;
+}
+
+.nav-link-redeem:hover {
+    opacity: 0.8;
+}

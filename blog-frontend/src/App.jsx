@@ -8,6 +8,7 @@ const Home = lazy(() => import('./pages/Home'));
 const About = lazy(() => import('./pages/About'));
 const TutorialDetail = lazy(() => import('./pages/TutorialDetail'));
 const CdkVerify = lazy(() => import('./pages/CdkVerify'));
+const Redeem = lazy(() => import('./pages/Redeem'));
 
 // Admin pages
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
@@ -38,6 +39,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="about" element={<About />} />
           <Route path="tutorial/:id" element={<TutorialDetail />} />
+          <Route path="redeem" element={<Redeem />} />
         </Route>
 
         {/* Admin Login (public) */}
