@@ -6,90 +6,107 @@ import './CdkVerify.css';
 // deliveryStatus / task status: 0=待发卡, 1=发卡中, 2=完成, 3=失败
 const DELIVERY_LABELS = { 0: '待发卡', 1: '发卡中...', 2: '已完成', 3: '发卡失败' };
 
-// 字段名 → 中文标签映射（按展示顺序）
-const FIELD_LABELS = [
-    ['cardNumber',     '卡号'],
-    ['expiry',         '有效期'],
-    ['cardPassword',   'CVV'],
-    ['cvv',            'CVV'],
-    ['openTime',       '开卡时间'],
-    ['createdAt',      '开卡时间'],
-    ['remainingTime',  '剩余时间'],
-    ['region',         '地区'],
-    ['country',        '地区'],
-    ['name',           '姓名'],
-    ['address',        '地址'],
-    ['city',           '城市'],
-    ['state',          '州'],
-    ['zip',            '邮编'],
-    ['zipCode',        '邮编'],
-    ['info',           '信息'],
-    ['remark',         '备注'],
+/**
+ * 白名单字段：只展示对用户有意义的字段，内部字段（id、userId、status、orderId 等）全部过滤。
+ * 格式：[字段名, 中文标签, 颜色: 'gold'|'green'|undefined]
+ */
+const WHITELIST = [
+    ['cardNumber',    '卡号',     'gold'],
+    ['expiry',        '有效期',   undefined],
+    ['cardPassword',  'CVV',      'gold'],
+    ['cvv',           'CVV',      'gold'],
+    ['soldTime',      '开卡时间', undefined],
+    ['openTime',      '开卡时间', undefined],
+    ['createdAt',     '开卡时间', undefined],
+    ['createTime',    '开卡时间', undefined],
+    ['remainingTime', '剩余时间', 'green'],
+    ['region',        '地区',     undefined],
+    ['country',       '地区',     undefined],
+    ['name',          '姓名',     undefined],
+    ['address',       '地址',     undefined],
+    ['city',          '城市',     undefined],
+    ['state',         '州',       undefined],
+    ['zip',           '邮编',     undefined],
+    ['zipCode',       '邮编',     undefined],
+    ['postalCode',    '邮编',     undefined],
+    ['info',          '信息',     undefined],
+    ['note',          '信息',     undefined],
 ];
 
-// 高亮字段（金色）
-const HIGHLIGHT_KEYS = new Set(['cardNumber', 'cardPassword', 'cvv']);
-// 绿色字段（剩余时间）
-const GREEN_KEYS = new Set(['remainingTime']);
+const WHITELIST_KEYS = new Set(WHITELIST.map(([k]) => k));
 
-/* 单张卡片详情组件 */
+/** 格式化 ISO 时间为 YYYY/M/D HH:MM:SS */
+function fmtTime(val) {
+    if (!val) return String(val);
+    const d = new Date(val);
+    if (isNaN(d)) return String(val);
+    return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ` +
+           `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+
+const TIME_KEYS = new Set(['soldTime','openTime','createdAt','createTime']);
+
+/** 尝试从 cardData 字符串里解析 JSON，合并到 card 对象 */
+function mergeCardData(card) {
+    if (!card || !card.cardData) return card;
+    try {
+        const parsed = JSON.parse(card.cardData);
+        if (parsed && typeof parsed === 'object') {
+            return { ...parsed, ...card }; // card 自带字段优先
+        }
+    } catch { /* cardData 不是 JSON，忽略 */ }
+    return card;
+}
+
+/* 单张卡片详情组件（白名单模式） */
 function CardDetail({ card, index }) {
     if (typeof card !== 'object' || card === null) {
         return (
             <li className="rdm-card-item">
                 <div className="rdm-card-fields"><code>{card}</code></div>
                 <button className="rdm-copy-btn"
-                    onClick={() => navigator.clipboard.writeText(card)}>复制</button>
+                    onClick={() => navigator.clipboard.writeText(String(card))}>复制</button>
             </li>
         );
     }
 
-    // 已知字段按顺序排列，未知字段附在后面
-    const knownKeys = FIELD_LABELS.map(([k]) => k);
-    const unknownEntries = Object.entries(card).filter(
-        ([k]) => !knownKeys.includes(k) && k !== 'cardData'
-    );
+    // 合并 cardData（如含 JSON）
+    const merged = mergeCardData(card);
 
-    const orderedEntries = [
-        ...FIELD_LABELS.filter(([k]) => card[k] !== undefined && card[k] !== null && card[k] !== ''),
-        ...unknownEntries.map(([k, v]) => [k, String(k)])
-    ];
+    // 只保留白名单字段，去重（同标签取第一个有值的）
+    const seenLabels = new Set();
+    const rows = [];
+    for (const [key, label, color] of WHITELIST) {
+        const val = merged[key];
+        if (val === undefined || val === null || val === '') continue;
+        if (seenLabels.has(label)) continue; // 去重（如 region/country 同标签）
+        seenLabels.add(label);
+        const displayVal = TIME_KEYS.has(key) ? fmtTime(val) : String(val);
+        rows.push({ key, label, displayVal, color });
+    }
 
-    // 복사 전체
-    const copyAll = orderedEntries
-        .map(([k, label]) => {
-            const realLabel = FIELD_LABELS.find(([fk]) => fk === k)?.[1] ?? label;
-            return `${realLabel}: ${card[k]}`;
-        })
-        .join('\n');
+    const copyAll = rows.map(r => `${r.label}: ${r.displayVal}`).join('\n');
 
     return (
         <li className="rdm-card-detail-item">
             {index !== undefined && <div className="rdm-card-index">#{index + 1}</div>}
             <table className="rdm-card-table">
                 <tbody>
-                    {orderedEntries.map(([key]) => {
-                        const labelEntry = FIELD_LABELS.find(([k]) => k === key);
-                        const label = labelEntry ? labelEntry[1] : key;
-                        const value = String(card[key]);
-                        const isHighlight = HIGHLIGHT_KEYS.has(key);
-                        const isGreen = GREEN_KEYS.has(key);
-                        return (
-                            <tr key={key} className="rdm-card-row">
-                                <td className="rdm-card-row__label">{label}</td>
-                                <td className={`rdm-card-row__value ${isHighlight ? 'rdm-val-highlight' : ''} ${isGreen ? 'rdm-val-green' : ''}`}>
-                                    {value}
-                                </td>
-                                <td className="rdm-card-row__copy">
-                                    <button
-                                        className="rdm-field-copy-btn"
-                                        title="复制"
-                                        onClick={() => navigator.clipboard.writeText(value)}
-                                    >⧉</button>
-                                </td>
-                            </tr>
-                        );
-                    })}
+                    {rows.map(({ key, label, displayVal, color }) => (
+                        <tr key={key} className="rdm-card-row">
+                            <td className="rdm-card-row__label">{label}</td>
+                            <td className={`rdm-card-row__value ${color === 'gold' ? 'rdm-val-highlight' : color === 'green' ? 'rdm-val-green' : ''}`}>
+                                {displayVal}
+                            </td>
+                            <td className="rdm-card-row__copy">
+                                <button
+                                    className="rdm-field-copy-btn"
+                                    title="复制"
+                                    onClick={() => navigator.clipboard.writeText(displayVal)}
+                                >⧉</button>
+                            </td>
+                        </tr>
+                    ))}
                 </tbody>
             </table>
             <div className="rdm-card-copyall-row">
