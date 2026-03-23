@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import '@wangeditor/editor/dist/css/style.css';
 import { Editor, Toolbar } from '@wangeditor/editor-for-react';
@@ -24,6 +24,75 @@ export default function ArticleEditor() {
     });
     const [saving, setSaving] = useState(false);
 
+    // Upload status for drag/paste overlay
+    const [uploading, setUploading] = useState(false);
+    const [draggingOver, setDraggingOver] = useState(false);
+    const dragCounter = useRef(0);
+
+    // ---- Image upload helper (shared by paste, drag, and toolbar) ----
+    const handleImageUpload = useCallback(async (file, editorInstance) => {
+        if (!file || !file.type.startsWith('image/')) return;
+        const ed = editorInstance || editor;
+        if (!ed) return;
+
+        setUploading(true);
+        try {
+            const res = await uploadMediaFile(file);
+            ed.dangerouslyInsertNode({
+                type: 'image',
+                src: res.url,
+                alt: res.alt || file.name || 'image',
+                href: res.href || res.url,
+                children: [{ text: '' }],
+            });
+        } catch (e) {
+            console.error('Image upload failed', e);
+            alert(`图片上传失败: ${e.message}`);
+        } finally {
+            setUploading(false);
+        }
+    }, [editor]);
+
+    // ---- Drag-and-drop onto the editor wrapper ----
+    const handleWrapperDragEnter = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter.current++;
+        setDraggingOver(true);
+    }, []);
+
+    const handleWrapperDragLeave = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter.current--;
+        if (dragCounter.current <= 0) {
+            dragCounter.current = 0;
+            setDraggingOver(false);
+        }
+    }, []);
+
+    const handleWrapperDragOver = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
+    const handleWrapperDrop = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDraggingOver(false);
+        dragCounter.current = 0;
+
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+            // Upload all image files
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    handleImageUpload(file);
+                }
+            });
+        }
+    }, [handleImageUpload]);
+
     // WangEditor Config
     const toolbarConfig = {};
     const editorConfig = {
@@ -36,6 +105,7 @@ export default function ArticleEditor() {
                         insertFn(res.url, res.alt, res.url);
                     } catch (e) {
                         console.error('Image upload failed', e);
+                        alert(`图片上传失败: ${e.message}`);
                     }
                 }
             },
@@ -46,11 +116,37 @@ export default function ArticleEditor() {
                         insertFn(res.url, res.url);
                     } catch (e) {
                         console.error('Video upload failed', e);
+                        alert(`视频上传失败: ${e.message}`);
                     }
                 }
             }
-        }
+        },
     };
+
+    // ---- Handle paste events from WangEditor ----
+    const handleEditorCreated = useCallback((editorInstance) => {
+        setEditor(editorInstance);
+
+        // Listen for paste events on the editor's DOM container
+        const editorEl = editorInstance.getEditableContainer();
+        if (editorEl) {
+            editorEl.addEventListener('paste', (e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+
+                for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                        e.preventDefault();
+                        const file = item.getAsFile();
+                        if (file) {
+                            handleImageUpload(file, editorInstance);
+                        }
+                        return; // only handle first image
+                    }
+                }
+            });
+        }
+    }, [handleImageUpload]);
 
     useEffect(() => {
         if (isEdit) {
@@ -128,7 +224,13 @@ export default function ArticleEditor() {
                         />
                     </div>
 
-                    <div className="wangeditor-wrapper">
+                    <div
+                        className={`wangeditor-wrapper ${draggingOver ? 'drag-over' : ''}`}
+                        onDragEnter={handleWrapperDragEnter}
+                        onDragLeave={handleWrapperDragLeave}
+                        onDragOver={handleWrapperDragOver}
+                        onDrop={handleWrapperDrop}
+                    >
                         <Toolbar
                             editor={editor}
                             defaultConfig={toolbarConfig}
@@ -138,11 +240,29 @@ export default function ArticleEditor() {
                         <Editor
                             defaultConfig={editorConfig}
                             value={html}
-                            onCreated={setEditor}
+                            onCreated={handleEditorCreated}
                             onChange={editor => setHtml(editor.getHtml())}
                             mode="default"
                             style={{ height: '500px', overflowY: 'hidden' }}
                         />
+
+                        {/* Drag overlay */}
+                        {draggingOver && (
+                            <div className="editor-drag-overlay">
+                                <div className="editor-drag-overlay-content">
+                                    <span className="drag-icon">📷</span>
+                                    <span>松开鼠标即可上传图片</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Upload loading indicator */}
+                        {uploading && (
+                            <div className="editor-upload-overlay">
+                                <div className="editor-upload-spinner" />
+                                <span>图片上传中...</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 

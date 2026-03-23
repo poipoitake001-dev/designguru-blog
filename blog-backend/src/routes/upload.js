@@ -20,17 +20,38 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// Helper: derive a file extension from mimetype when originalname has none
+function guessFormat(mimetype) {
+    const map = {
+        'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif',
+        'image/webp': 'webp', 'image/svg+xml': 'svg',
+        'video/mp4': 'mp4', 'video/webm': 'webm', 'video/ogg': 'ogg',
+    };
+    return map[mimetype] || undefined;
+}
+
 // Configure Multer storage to use Cloudinary
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: async (req, file) => {
         // Determine resource type based on mimetype
         const isVideo = file.mimetype.startsWith('video/');
-        return {
+
+        // Build params — do NOT use allowed_formats so that pasted blobs
+        // (which may have no extension or an "image.png" generic name) are accepted.
+        const params = {
             folder: 'designguru-blog',
             resource_type: isVideo ? 'video' : 'image',
-            allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'webm', 'ogg'],
+            unique_filename: true,
         };
+
+        // If the file has no usable extension, tell Cloudinary the format explicitly
+        const ext = file.originalname && file.originalname.includes('.')
+            ? undefined  // Cloudinary will auto-detect from extension
+            : guessFormat(file.mimetype);
+        if (ext) params.format = ext;
+
+        return params;
     }
 });
 

@@ -92,14 +92,21 @@ export async function uploadMediaFile(file) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = handle401(await fetch(`${API_BASE}/upload`, {
-        method: 'POST',
-        headers: { ...authHeaders() },   // NOTE: do NOT set Content-Type for multipart
-        body: formData
-    }));
+    let res;
+    try {
+        res = handle401(await fetch(`${API_BASE}/upload`, {
+            method: 'POST',
+            headers: { ...authHeaders() },   // NOTE: do NOT set Content-Type for multipart
+            body: formData
+        }));
+    } catch (networkErr) {
+        throw new Error(`网络错误，无法连接到服务器: ${networkErr.message}`);
+    }
+
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || '文件上传失败');
+        const detail = data.error || `HTTP ${res.status}`;
+        throw new Error(`上传失败: ${detail}`);
     }
     const data = await res.json();
 
