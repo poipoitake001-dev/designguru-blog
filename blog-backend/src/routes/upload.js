@@ -10,7 +10,6 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { v2: cloudinary } = require('cloudinary');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { requireAuth } = require('../middleware/auth');
 
 // Configure Cloudinary from environment variables
@@ -20,7 +19,26 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Helper: derive a file extension from mimetype when originalname has none
+// Validate Cloudinary credentials on startup
+(async () => {
+    try {
+        await cloudinary.api.ping();
+        console.log('✅ Cloudinary credentials OK');
+    } catch (e) {
+        console.error('❌ Cloudinary credentials INVALID:', e.message || e.error?.message);
+        console.error('   Please update CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET in your .env');
+    }
+})();
+
+// Use in-memory multer (upload buffer, then push to Cloudinary ourselves)
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 50 * 1024 * 1024 // 50 MB max
+    }
+});
+
+// Helper: derive format from mimetype
 function guessFormat(mimetype) {
     const map = {
         'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif',
@@ -30,83 +48,76 @@ function guessFormat(mimetype) {
     return map[mimetype] || undefined;
 }
 
-// Configure Multer storage to use Cloudinary
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: async (req, file) => {
-        // Determine resource type based on mimetype
-        const isVideo = file.mimetype.startsWith('video/');
-
-        // Build params — do NOT use allowed_formats so that pasted blobs
-        // (which may have no extension or an "image.png" generic name) are accepted.
-        const params = {
-            folder: 'designguru-blog',
-            resource_type: isVideo ? 'video' : 'image',
-            unique_filename: true,
-        };
-
-        // If the file has no usable extension, tell Cloudinary the format explicitly
-        const ext = file.originalname && file.originalname.includes('.')
-            ? undefined  // Cloudinary will auto-detect from extension
-            : guessFormat(file.mimetype);
-        if (ext) params.format = ext;
-
-        return params;
-    }
-});
-
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 50 * 1024 * 1024 // 50 MB max
-    }
-});
+// Upload buffer to Cloudinary via upload_stream
+function uploadToCloudinary(buffer, options) {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(options, (err, result) => {
+            if (err) return reject(err);
+            resolve(result);
+        });
+        stream.end(buffer);
+    });
+}
 
 // ---------------------------------------------------------------------------
 // POST /api/upload — upload a single media file to Cloudinary (JWT protected)
 // ---------------------------------------------------------------------------
-router.post('/', requireAuth, upload.single('file'), (req, res) => {
+router.post('/', requireAuth, upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: '没有收到文件' });
         }
 
-        // req.file.path contains the Cloudinary URL
-        const fileUrl = req.file.path;
+        const file = req.file;
+        const isVideo = file.mimetype.startsWith('video/');
+
+        // Build Cloudinary upload options
+        const uploadOptions = {
+            folder: 'designguru-blog',
+            resource_type: isVideo ? 'video' : 'image',
+            unique_filename: true,
+        };
+
+        // If file has no usable extension, set format explicitly
+        const hasExtension = file.originalname && file.originalname.includes('.');
+        if (!hasExtension) {
+            const fmt = guessFormat(file.mimetype);
+            if (fmt) uploadOptions.format = fmt;
+        }
+
+        const result = await uploadToCloudinary(file.buffer, uploadOptions);
 
         // WangEditor expects { url, alt } for images
         res.json({
-            url: fileUrl,
-            alt: req.file.originalname || 'uploaded-image',
-            href: fileUrl
+            url: result.secure_url,
+            alt: file.originalname || 'uploaded-image',
+            href: result.secure_url
         });
     } catch (err) {
-        console.error('POST /api/upload error:', err);
-        res.status(500).json({ error: '文件上传失败' });
+        console.error('POST /api/upload Cloudinary error:', {
+            message: err.message,
+            http_code: err.http_code,
+            error: err.error,
+        });
+
+        const detail = err.message || (err.error && err.error.message) || '上传出错';
+        const status = err.http_code || 500;
+        res.status(status).json({ error: detail });
     }
 });
 
-// Multer / Cloudinary error handling middleware
+// Multer error handling middleware
 router.use((err, req, res, next) => {
-    // Log full error object so Cloudinary errors are visible in server logs
-    console.error('Upload middleware error:', JSON.stringify({
-        message: err.message,
-        http_code: err.http_code,
-        code: err.code,
-        error: err.error,
-        stack: err.stack
-    }, null, 2));
-
     if (err instanceof multer.MulterError) {
+        console.error('Multer error:', err.code, err.message);
         if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(413).json({ error: '文件大小超过50MB限制' });
         }
         return res.status(400).json({ error: err.message });
     }
     if (err) {
-        // Return Cloudinary-specific error info when available
-        const errMsg = err.message || (err.error && err.error.message) || '上传出错';
-        return res.status(400).json({ error: errMsg });
+        console.error('Upload middleware error:', err.message);
+        return res.status(500).json({ error: err.message || '上传出错' });
     }
     next();
 });
