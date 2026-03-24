@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate, useBlocker } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import '@wangeditor/editor/dist/css/style.css';
 import { Editor, Toolbar } from '@wangeditor/editor-for-react';
 import { fetchTutorialDetail, createArticle, updateArticle, uploadMediaFile } from '../../services/api';
@@ -31,7 +31,6 @@ export default function ArticleEditor() {
     const [lastSaved, setLastSaved] = useState(null);
     const [draftNotice, setDraftNotice] = useState(false);
     const saveTimerRef = useRef(null);
-    const justSavedRef = useRef(false); // flag to skip blocker after publish
 
     const DRAFT_KEY = `article-draft-${id || 'new'}`;
 
@@ -161,7 +160,7 @@ export default function ArticleEditor() {
                 setTimeout(() => setDraftNotice(false), 4000);
                 return; // use draft instead of fetching
             }
-        } catch { /* ignore parse errors */ }
+        } catch (e) { /* ignore parse errors */ }
 
         if (isEdit) {
             fetchTutorialDetail(id).then(({ data }) => {
@@ -205,32 +204,30 @@ export default function ArticleEditor() {
     useEffect(() => {
         const onBeforeUnload = (e) => {
             if (isDirty) {
+                // Auto-save before closing
+                try {
+                    const draft = JSON.stringify({ html, formData, savedAt: Date.now() });
+                    localStorage.setItem(DRAFT_KEY, draft);
+                } catch (err) { /* ignore */ }
                 e.preventDefault();
                 e.returnValue = '';
             }
         };
         window.addEventListener('beforeunload', onBeforeUnload);
         return () => window.removeEventListener('beforeunload', onBeforeUnload);
-    }, [isDirty]);
+    }, [isDirty, html, formData, DRAFT_KEY]);
 
-    // Block in-app navigation: auto-save then allow
-    const blocker = useBlocker(
-        ({ currentLocation, nextLocation }) =>
-            !justSavedRef.current &&
-            isDirty &&
-            currentLocation.pathname !== nextLocation.pathname
-    );
-
+    // Auto-save draft when component unmounts (navigating away within app)
     useEffect(() => {
-        if (blocker.state === 'blocked') {
-            // Auto-save draft before leaving
+        return () => {
+            // Save current state on unmount
             try {
+                const currentHtml = document.querySelector('.w-e-text-container')?.innerHTML;
                 const draft = JSON.stringify({ html, formData, savedAt: Date.now() });
                 localStorage.setItem(DRAFT_KEY, draft);
-            } catch { /* ignore */ }
-            blocker.proceed();
-        }
-    }, [blocker, html, formData, DRAFT_KEY]);
+            } catch (err) { /* ignore */ }
+        };
+    }, [html, formData, DRAFT_KEY]);
 
     // Clean up editor instance on unmount
     useEffect(() => {
