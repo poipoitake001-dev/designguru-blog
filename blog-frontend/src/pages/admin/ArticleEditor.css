@@ -251,3 +251,51 @@ html.dark .w-e-toolbar {
     object-fit: cover;
     display: block;
 }
+
+/* Auto-save indicator */
+.autosave-indicator {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.75rem;
+    background: rgba(16, 185, 129, 0.08);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    font-weight: 500;
+    animation: autosave-fade-in 0.4s ease;
+}
+
+@keyframes autosave-fade-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Draft restored notice */
+.draft-restored-notice {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.08));
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: var(--radius-md);
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    color: var(--accent-color);
+    font-weight: 500;
+    animation: notice-slide-in 0.5s ease;
+}
+
+@keyframes notice-slide-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive: stack layout on smaller screens */
+@media (max-width: 1200px) {
+    .editor-layout {
+        flex-direction: column;
+    }
+    .editor-sidebar {
+        width: 100%;
+    }
+}

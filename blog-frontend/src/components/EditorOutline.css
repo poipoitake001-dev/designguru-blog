@@ -1,0 +1,143 @@
+/* src/components/EditorOutline.css */
+
+.editor-outline {
+    width: 220px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.editor-outline-inner {
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.editor-outline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.editor-outline-header h4 {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.editor-outline-header .outline-icon {
+    font-size: 1rem;
+    opacity: 0.7;
+}
+
+.outline-count {
+    font-size: 0.7rem;
+    background: var(--accent-light);
+    color: var(--accent-color);
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Heading list */
+.outline-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.outline-item {
+    position: relative;
+}
+
+.outline-item a {
+    display: block;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-left: 2px solid transparent;
+    text-decoration: none;
+    line-height: 1.4;
+}
+
+.outline-item a:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.outline-item.active a {
+    color: var(--accent-color);
+    border-left-color: var(--accent-color);
+    background: var(--accent-light);
+    font-weight: 600;
+}
+
+/* Indentation levels */
+.outline-item[data-level="2"] a {
+    padding-left: 0.6rem;
+}
+
+.outline-item[data-level="3"] a {
+    padding-left: 1.4rem;
+    font-size: 0.75rem;
+}
+
+/* Empty state */
+.outline-empty {
+    text-align: center;
+    padding: 1rem 0.5rem;
+    color: var(--text-tertiary);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.outline-empty .empty-icon {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 0.4rem;
+    opacity: 0.5;
+}
+
+/* Scrollbar */
+.editor-outline-inner::-webkit-scrollbar {
+    width: 3px;
+}
+
+.editor-outline-inner::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.editor-outline-inner::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+}
+
+/* Responsive: hide on very small screens */
+@media (max-width: 1200px) {
+    .editor-outline {
+        display: none;
+    }
+}

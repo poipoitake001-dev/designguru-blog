@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import '@wangeditor/editor/dist/css/style.css';
 import { Editor, Toolbar } from '@wangeditor/editor-for-react';
 import { fetchTutorialDetail, createArticle, updateArticle, uploadMediaFile } from '../../services/api';
 import DragDropUpload from '../../components/DragDropUpload';
+import EditorOutline from '../../components/EditorOutline';
 import './ArticleEditor.css';
 
 export default function ArticleEditor() {
@@ -13,6 +14,7 @@ export default function ArticleEditor() {
 
     // Editor instance
     const [editor, setEditor] = useState(null);
+    const editorRef = useRef(null); // ref for access in editorConfig closures
 
     // Form State
     const [html, setHtml] = useState('<p>在此处开始编写您的优质教程...</p>');
@@ -24,85 +26,81 @@ export default function ArticleEditor() {
     });
     const [saving, setSaving] = useState(false);
 
-    // Upload status for drag/paste overlay
-    const [uploading, setUploading] = useState(false);
-    const [draggingOver, setDraggingOver] = useState(false);
-    const dragCounter = useRef(0);
+    // Auto-save state
+    const [isDirty, setIsDirty] = useState(false);
+    const [lastSaved, setLastSaved] = useState(null);
+    const [draftNotice, setDraftNotice] = useState(false);
+    const saveTimerRef = useRef(null);
+    const justSavedRef = useRef(false); // flag to skip blocker after publish
 
-    // ---- Image upload helper (shared by paste, drag, and toolbar) ----
-    const handleImageUpload = useCallback(async (file, editorInstance) => {
+    const DRAFT_KEY = `article-draft-${id || 'new'}`;
+
+    // Helper: upload a file and insert as image node into the editor
+    const uploadAndInsertImage = useCallback(async (editorInstance, file) => {
         if (!file || !file.type.startsWith('image/')) return;
-        const ed = editorInstance || editor;
-        if (!ed) return;
-
-        setUploading(true);
         try {
             const res = await uploadMediaFile(file);
-            ed.dangerouslyInsertNode({
+            const imageNode = {
                 type: 'image',
                 src: res.url,
                 alt: res.alt || file.name || 'image',
-                href: res.href || res.url,
+                href: res.url,
                 children: [{ text: '' }],
-            });
+            };
+            editorInstance.restoreSelection();
+            editorInstance.insertNode(imageNode);
         } catch (e) {
             console.error('Image upload failed', e);
             alert(`图片上传失败: ${e.message}`);
-        } finally {
-            setUploading(false);
-        }
-    }, [editor]);
-
-    // ---- Drag-and-drop onto the editor wrapper ----
-    const handleWrapperDragEnter = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dragCounter.current++;
-        setDraggingOver(true);
-    }, []);
-
-    const handleWrapperDragLeave = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dragCounter.current--;
-        if (dragCounter.current <= 0) {
-            dragCounter.current = 0;
-            setDraggingOver(false);
         }
     }, []);
-
-    const handleWrapperDragOver = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    }, []);
-
-    const handleWrapperDrop = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setDraggingOver(false);
-        dragCounter.current = 0;
-
-        const files = e.dataTransfer?.files;
-        if (files && files.length > 0) {
-            // Upload all image files
-            Array.from(files).forEach(file => {
-                if (file.type.startsWith('image/')) {
-                    handleImageUpload(file);
-                }
-            });
-        }
-    }, [handleImageUpload]);
 
     // WangEditor Config
     const toolbarConfig = {};
     const editorConfig = {
         placeholder: '请输入内容...',
+
+        // Intercept paste: handle pasted images manually to avoid broken dangerouslyInsertNode
+        customPaste: (editor, event) => {
+            const items = event.clipboardData?.items;
+            if (items) {
+                for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                        event.preventDefault();
+                        const file = item.getAsFile();
+                        if (file) uploadAndInsertImage(editor, file);
+                        return false; // prevent WangEditor default paste
+                    }
+                }
+            }
+            return true; // let WangEditor handle non-image pastes normally
+        },
+
         MENU_CONF: {
             uploadImage: {
+                // Handles toolbar upload AND paste/drop that bypass customPaste
                 customUpload: async (file, insertFn) => {
                     try {
                         const res = await uploadMediaFile(file);
-                        insertFn(res.url, res.alt, res.url);
+                        // Try insertFn first; it may crash on React 19 (dangerouslyInsertNode)
+                        try {
+                            insertFn(res.url, res.alt || file.name || 'image', res.url);
+                        } catch (insertErr) {
+                            console.warn('insertFn failed, using fallback insertNode:', insertErr.message);
+                            // Fallback: use editor.insertNode() which bypasses broken Slate API
+                            const ed = editorRef.current;
+                            if (ed) {
+                                const imageNode = {
+                                    type: 'image',
+                                    src: res.url,
+                                    alt: res.alt || file.name || 'image',
+                                    href: res.url,
+                                    children: [{ text: '' }],
+                                };
+                                ed.restoreSelection();
+                                ed.insertNode(imageNode);
+                            }
+                        }
                     } catch (e) {
                         console.error('Image upload failed', e);
                         alert(`图片上传失败: ${e.message}`);
@@ -123,32 +121,48 @@ export default function ArticleEditor() {
         },
     };
 
-    // ---- Handle paste events from WangEditor ----
     const handleEditorCreated = useCallback((editorInstance) => {
         setEditor(editorInstance);
+        editorRef.current = editorInstance;
 
-        // Listen for paste events on the editor's DOM container
-        const editorEl = editorInstance.getEditableContainer();
+        // Attach custom drop handler on the editor DOM to intercept dragged images
+        const editorEl = editorInstance.getEditableContainer?.();
         if (editorEl) {
-            editorEl.addEventListener('paste', (e) => {
-                const items = e.clipboardData?.items;
-                if (!items) return;
-
-                for (const item of items) {
-                    if (item.type.startsWith('image/')) {
-                        e.preventDefault();
-                        const file = item.getAsFile();
-                        if (file) {
-                            handleImageUpload(file, editorInstance);
+            const handleDrop = (e) => {
+                const files = e.dataTransfer?.files;
+                if (files && files.length > 0) {
+                    for (const file of files) {
+                        if (file.type.startsWith('image/')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            uploadAndInsertImage(editorInstance, file);
+                            return;
                         }
-                        return; // only handle first image
                     }
                 }
-            });
+            };
+            editorEl.addEventListener('drop', handleDrop, true); // capture phase
+            // Store cleanup ref
+            editorInstance._customDropHandler = handleDrop;
+            editorInstance._customDropEl = editorEl;
         }
-    }, [handleImageUpload]);
+    }, [uploadAndInsertImage]);
 
+    // Load article data or restore draft
     useEffect(() => {
+        // Check for saved draft first
+        try {
+            const draft = localStorage.getItem(DRAFT_KEY);
+            if (draft) {
+                const parsed = JSON.parse(draft);
+                setFormData(parsed.formData);
+                setHtml(parsed.html);
+                setDraftNotice(true);
+                setTimeout(() => setDraftNotice(false), 4000);
+                return; // use draft instead of fetching
+            }
+        } catch { /* ignore parse errors */ }
+
         if (isEdit) {
             fetchTutorialDetail(id).then(({ data }) => {
                 setFormData({
@@ -162,12 +176,70 @@ export default function ArticleEditor() {
                 console.error('Failed to load article:', err);
             });
         }
-    }, [id, isEdit]);
+    }, [id, isEdit, DRAFT_KEY]);
+
+    // Debounced auto-save to localStorage
+    useEffect(() => {
+        if (!isDirty) return;
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+            try {
+                const draft = JSON.stringify({ html, formData, savedAt: Date.now() });
+                localStorage.setItem(DRAFT_KEY, draft);
+                setLastSaved(new Date());
+                setIsDirty(false);
+            } catch (e) {
+                console.warn('Auto-save failed:', e);
+            }
+        }, 2000);
+        return () => clearTimeout(saveTimerRef.current);
+    }, [isDirty, html, formData, DRAFT_KEY]);
+
+    // Mark dirty on content/form changes
+    const handleHtmlChange = useCallback((editorInstance) => {
+        setHtml(editorInstance.getHtml());
+        setIsDirty(true);
+    }, []);
+
+    // Warn before browser tab close
+    useEffect(() => {
+        const onBeforeUnload = (e) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', onBeforeUnload);
+        return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    }, [isDirty]);
+
+    // Block in-app navigation: auto-save then allow
+    const blocker = useBlocker(
+        ({ currentLocation, nextLocation }) =>
+            !justSavedRef.current &&
+            isDirty &&
+            currentLocation.pathname !== nextLocation.pathname
+    );
+
+    useEffect(() => {
+        if (blocker.state === 'blocked') {
+            // Auto-save draft before leaving
+            try {
+                const draft = JSON.stringify({ html, formData, savedAt: Date.now() });
+                localStorage.setItem(DRAFT_KEY, draft);
+            } catch { /* ignore */ }
+            blocker.proceed();
+        }
+    }, [blocker, html, formData, DRAFT_KEY]);
 
     // Clean up editor instance on unmount
     useEffect(() => {
         return () => {
             if (editor == null) return;
+            // Clean up custom drop handler
+            if (editor._customDropEl && editor._customDropHandler) {
+                editor._customDropEl.removeEventListener('drop', editor._customDropHandler, true);
+            }
             editor.destroy();
             setEditor(null);
         };
@@ -176,6 +248,7 @@ export default function ArticleEditor() {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        setIsDirty(true);
     };
 
     const handleSave = async () => {
@@ -190,6 +263,10 @@ export default function ArticleEditor() {
             } else {
                 await createArticle(payload);
             }
+            // Clean up draft after successful save
+            localStorage.removeItem(DRAFT_KEY);
+            setIsDirty(false);
+            justSavedRef.current = true;
             navigate('/admin/articles');
         } catch (e) {
             console.error(e);
@@ -201,9 +278,19 @@ export default function ArticleEditor() {
 
     return (
         <div className="article-editor-page animate-fade-in">
+            {draftNotice && (
+                <div className="draft-restored-notice">
+                    📋 已恢复上次编辑的草稿内容
+                </div>
+            )}
             <div className="editor-header">
                 <h2>{isEdit ? '编辑教程' : '发布新教程'}</h2>
                 <div className="header-actions">
+                    {lastSaved && (
+                        <span className="autosave-indicator">
+                            ✓ 已自动保存 {lastSaved.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    )}
                     <button className="cancel-btn" onClick={() => navigate('/admin/articles')}>取消</button>
                     <button className="save-btn" onClick={handleSave} disabled={saving}>
                         {saving ? '保存中...' : '发布文章'}
@@ -212,6 +299,9 @@ export default function ArticleEditor() {
             </div>
 
             <div className="editor-layout">
+                {/* Left: Chapter Outline */}
+                <EditorOutline editor={editor} html={html} />
+
                 <div className="editor-main glass-panel">
                     <div className="form-group">
                         <input
@@ -224,13 +314,7 @@ export default function ArticleEditor() {
                         />
                     </div>
 
-                    <div
-                        className={`wangeditor-wrapper ${draggingOver ? 'drag-over' : ''}`}
-                        onDragEnter={handleWrapperDragEnter}
-                        onDragLeave={handleWrapperDragLeave}
-                        onDragOver={handleWrapperDragOver}
-                        onDrop={handleWrapperDrop}
-                    >
+                    <div className="wangeditor-wrapper">
                         <Toolbar
                             editor={editor}
                             defaultConfig={toolbarConfig}
@@ -241,28 +325,10 @@ export default function ArticleEditor() {
                             defaultConfig={editorConfig}
                             value={html}
                             onCreated={handleEditorCreated}
-                            onChange={editor => setHtml(editor.getHtml())}
+                            onChange={handleHtmlChange}
                             mode="default"
                             style={{ height: '500px', overflowY: 'hidden' }}
                         />
-
-                        {/* Drag overlay */}
-                        {draggingOver && (
-                            <div className="editor-drag-overlay">
-                                <div className="editor-drag-overlay-content">
-                                    <span className="drag-icon">📷</span>
-                                    <span>松开鼠标即可上传图片</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Upload loading indicator */}
-                        {uploading && (
-                            <div className="editor-upload-overlay">
-                                <div className="editor-upload-spinner" />
-                                <span>图片上传中...</span>
-                            </div>
-                        )}
                     </div>
                 </div>
 
