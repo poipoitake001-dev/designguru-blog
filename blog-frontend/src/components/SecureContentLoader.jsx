@@ -67,23 +67,6 @@ export default function SecureContentLoader() {
     // ── 图片灯箱 ──
     const [lightboxSrc, setLightboxSrc] = useState(null);
 
-    // ──── TOTP 倒计时 + 自动刷新 ────
-    useEffect(() => {
-        if (!verified || countdown <= 0) return;
-        const timer = setInterval(() => {
-            setCountdown(prev => {
-                if (prev <= 1) {
-                    clearInterval(timer);
-                    // 倒计时结束 → 自动刷新 TOTP
-                    handleRefreshTotp();
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-        return () => clearInterval(timer);
-    }, [verified, countdown, handleRefreshTotp]);
-
     // ──── 刷新 TOTP（不增加使用计数）────
     const handleRefreshTotp = useCallback(async () => {
         if (refreshingRef.current) return;
@@ -105,6 +88,23 @@ export default function SecureContentLoader() {
             refreshingRef.current = false;
         }
     }, []);
+
+    // ──── TOTP 倒计时 + 自动刷新 ────
+    useEffect(() => {
+        if (!verified || countdown <= 0) return;
+        const timer = setInterval(() => {
+            setCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    // 倒计时结束 → 自动刷新 TOTP
+                    handleRefreshTotp();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [verified, countdown, handleRefreshTotp]);
 
     // ──── 提交 CDK ────
     const handleSubmit = async (e) => {
