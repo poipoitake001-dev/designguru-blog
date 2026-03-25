@@ -57,7 +57,7 @@ export default function ContactObfuscator({ encodedData, encodedText }) {
     const [dismissed, setDismissed] = useState(false);
     const [cardTitle, setCardTitle] = useState('联系技术专员');
     const [cardDesc, setCardDesc] = useState('');
-    const isMobile = useRef(isMobileDevice());
+    const isMobile = isMobileDevice();
     const interacted = useRef(false);
 
     // ── 从后端读取动态卡片文案 ──
@@ -83,11 +83,11 @@ export default function ContactObfuscator({ encodedData, encodedText }) {
 
     // ── PC端自动显示 ──
     useEffect(() => {
-        if (!isMobile.current && wechatId) {
+        if (!isMobile && wechatId) {
             const timer = setTimeout(() => setVisible(true), 500);
             return () => clearTimeout(timer);
         }
-    }, [wechatId]);
+    }, [wechatId, isMobile]);
 
     // ── 移动端交互触发 ──
     const onFirstInteraction = useCallback(() => {
@@ -97,7 +97,7 @@ export default function ContactObfuscator({ encodedData, encodedText }) {
     }, []);
 
     useEffect(() => {
-        if (!isMobile.current || !wechatId) return;
+        if (!isMobile || !wechatId) return;
         const events = ['touchstart', 'scroll', 'click'];
         events.forEach(evt =>
             window.addEventListener(evt, onFirstInteraction, { once: true, passive: true })
@@ -107,7 +107,7 @@ export default function ContactObfuscator({ encodedData, encodedText }) {
                 window.removeEventListener(evt, onFirstInteraction)
             );
         };
-    }, [wechatId, onFirstInteraction]);
+    }, [wechatId, onFirstInteraction, isMobile]);
 
     const handleCopy = async () => {
         const ok = await copyToClipboard(wechatId);
@@ -122,7 +122,7 @@ export default function ContactObfuscator({ encodedData, encodedText }) {
     if (!wechatId || dismissed || !visible) return null;
 
     const card = (
-        <div className={`contact-card-toast ${isMobile.current ? 'mobile' : 'desktop'} animate-card-in`}>
+        <div className={`contact-card-toast ${isMobile ? 'mobile' : 'desktop'} animate-card-in`}>
             <button className="card-close-btn" onClick={handleDismiss} aria-label="关闭">×</button>
             <div className="card-header">
                 <span className="wechat-icon">

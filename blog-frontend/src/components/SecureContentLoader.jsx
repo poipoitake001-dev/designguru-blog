@@ -5,13 +5,52 @@
  *   1. 用户输入 CDK → POST /api/cdk/verify
  *   2. 后端返回 TOTP + 绑定教程列表 + 客服微信 Base64
  *   3. 前端销毁输入框，原位渲染 2FA 密钥（自动刷新）+ 教程卡片列表 + 客服浮窗
+ *
+ * 增强功能:
+ *   - 教程图片双击放大（ImageLightbox）
+ *   - 教程章节导航（从 h1–h4 提取生成侧边栏导航）
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ContactObfuscator from './ContactObfuscator';
+import ImageLightbox from './ImageLightbox';
 import './SecureContentLoader.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+/** 从 HTML 字符串中提取 h1–h4 标题，用于章节导航 */
+function extractHeadings(htmlString) {
+    if (!htmlString) return [];
+    const headings = [];
+    const regex = /<(h[1-4])[^>]*>([\s\S]*?)<\/\1>/gi;
+    let match;
+    let idx = 0;
+    while ((match = regex.exec(htmlString)) !== null) {
+        const level = parseInt(match[1][1], 10);
+        // 移除 HTML 标签，提取纯文本
+        const text = match[2].replace(/<[^>]*>/g, '').trim();
+        if (text) {
+            headings.push({ id: `tut-heading-${idx}`, level, text });
+            idx++;
+        }
+    }
+    return headings;
+}
+
+/** 在 HTML 字符串中为 h1–h4 注入唯一 ID */
+function injectHeadingIds(htmlString) {
+    if (!htmlString) return htmlString;
+    let idx = 0;
+    return htmlString.replace(/<(h[1-4])([^>]*)>/gi, (full, tag, attrs) => {
+        const id = `tut-heading-${idx}`;
+        idx++;
+        // 如果已有 id 属性则替换，否则新增
+        if (/id\s*=/i.test(attrs)) {
+            return `<${tag}${attrs.replace(/id\s*=\s*["'][^"']*["']/i, `id="${id}"`)}>`;
+        }
+        return `<${tag} id="${id}"${attrs}>`;
+    });
+}
 
 export default function SecureContentLoader() {
     const [cdk, setCdk] = useState('');
@@ -24,6 +63,9 @@ export default function SecureContentLoader() {
     const containerRef = useRef(null);
     const cdkRef = useRef('');           // 保留 CDK 码用于刷新
     const refreshingRef = useRef(false); // 防并发刷新
+
+    // ── 图片灯箱 ──
+    const [lightboxSrc, setLightboxSrc] = useState(null);
 
     // ──── TOTP 倒计时 + 自动刷新 ────
     useEffect(() => {
@@ -40,7 +82,7 @@ export default function SecureContentLoader() {
             });
         }, 1000);
         return () => clearInterval(timer);
-    }, [verified, countdown]);
+    }, [verified, countdown, handleRefreshTotp]);
 
     // ──── 刷新 TOTP（不增加使用计数）────
     const handleRefreshTotp = useCallback(async () => {
@@ -96,6 +138,23 @@ export default function SecureContentLoader() {
     const toggleTutorial = (id) => {
         setExpandedTutorials(prev => ({ ...prev, [id]: !prev[id] }));
     };
+
+    // ──── 教程图片双击 → 打开灯箱 ────
+    const handleTutorialBodyDblClick = useCallback((e) => {
+        const img = e.target.closest('img');
+        if (img && img.src) {
+            e.preventDefault();
+            setLightboxSrc(img.src);
+        }
+    }, []);
+
+    // ──── 章节导航点击 ────
+    const scrollToHeading = useCallback((headingId) => {
+        const el = document.getElementById(headingId);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, []);
 
     // ──── 未验证：显示 CDK 输入框 ────
     if (!verified) {
@@ -165,30 +224,63 @@ export default function SecureContentLoader() {
                         <span>📖 使用教程</span>
                         <span className="tutorial-count">{tutorials.length} 个模块</span>
                     </div>
-                    {tutorials.map((tut, index) => (
-                        <div key={tut.id} className="tutorial-module glass-panel">
-                            <button
-                                className="tutorial-toggle"
-                                onClick={() => toggleTutorial(tut.id)}
-                                aria-expanded={!!expandedTutorials[tut.id]}
-                            >
-                                <span className="tutorial-index">#{index + 1}</span>
-                                <span className="tutorial-title">{tut.title}</span>
-                                <span className={`toggle-arrow ${expandedTutorials[tut.id] ? 'open' : ''}`}>▼</span>
-                            </button>
-                            {expandedTutorials[tut.id] && (
-                                <div className="tutorial-body animate-fade-in">
-                                    <div dangerouslySetInnerHTML={{ __html: tut.content }} />
-                                </div>
-                            )}
-                        </div>
-                    ))}
+                    {tutorials.map((tut, index) => {
+                        const isExpanded = !!expandedTutorials[tut.id];
+                        const headings = isExpanded ? extractHeadings(tut.content) : [];
+                        const processedContent = isExpanded ? injectHeadingIds(tut.content) : '';
+
+                        return (
+                            <div key={tut.id} className="tutorial-module glass-panel">
+                                <button
+                                    className="tutorial-toggle"
+                                    onClick={() => toggleTutorial(tut.id)}
+                                    aria-expanded={isExpanded}
+                                >
+                                    <span className="tutorial-index">#{index + 1}</span>
+                                    <span className="tutorial-title">{tut.title}</span>
+                                    <span className={`toggle-arrow ${isExpanded ? 'open' : ''}`}>▼</span>
+                                </button>
+                                {isExpanded && (
+                                    <div className="tutorial-expanded-wrapper animate-fade-in">
+                                        {/* 章节导航 */}
+                                        {headings.length > 1 && (
+                                            <nav className="chapter-nav">
+                                                <div className="chapter-nav-title">📑 章节导航</div>
+                                                <ul className="chapter-nav-list">
+                                                    {headings.map((h) => (
+                                                        <li
+                                                            key={h.id}
+                                                            className={`chapter-nav-item chapter-nav-level-${h.level}`}
+                                                            onClick={() => scrollToHeading(h.id)}
+                                                        >
+                                                            {h.text}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </nav>
+                                        )}
+                                        {/* 教程正文 */}
+                                        <div
+                                            className="tutorial-body"
+                                            onDoubleClick={handleTutorialBodyDblClick}
+                                            dangerouslySetInnerHTML={{ __html: processedContent }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
             {/* ③ 客服微信浮窗 */}
             {contactBase64 && (
                 <ContactObfuscator encodedData={contactBase64} />
+            )}
+
+            {/* ④ 图片灯箱 */}
+            {lightboxSrc && (
+                <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
             )}
         </div>
     );

@@ -243,6 +243,64 @@ router.post('/create', authMiddleware, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DELETE /api/cdk/batch-delete — 管理员：批量删除多个 CDK
+// ─────────────────────────────────────────────────────────────────────────────
+router.delete('/batch-delete', authMiddleware, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: '请选择要删除的 CDK' });
+    }
+
+    // 生成参数占位符 $1, $2, $3 ...
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
+
+    // 先清理子表依赖
+    await run(`DELETE FROM cdk_usage_log WHERE cdk_id IN (${placeholders})`, ids);
+    await run(`DELETE FROM cdk_articles WHERE cdk_id IN (${placeholders})`, ids);
+
+    // 删除主记录
+    const result = await run(`DELETE FROM cdk_codes WHERE id IN (${placeholders}) RETURNING id`, ids);
+
+    res.json({ success: true, deletedCount: result.rowCount });
+  } catch (err) {
+    console.error('DELETE /api/cdk/batch-delete error:', err);
+    res.status(500).json({ error: '批量删除失败' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /api/cdk/batch-bind-articles — 管理员：批量为多个 CDK 绑定教程
+// ─────────────────────────────────────────────────────────────────────────────
+router.put('/batch-bind-articles', authMiddleware, async (req, res) => {
+  try {
+    const { ids, article_ids = [] } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: '请选择要操作的 CDK' });
+    }
+
+    for (const cdkId of ids) {
+      // 删除旧关联
+      await run('DELETE FROM cdk_articles WHERE cdk_id = $1', [cdkId]);
+
+      // 插入新关联
+      if (article_ids.length > 0) {
+        const values = article_ids.map((aid, i) => `($1, $${i + 2}, ${i})`).join(', ');
+        await run(
+          `INSERT INTO cdk_articles (cdk_id, article_id, sort_order) VALUES ${values}`,
+          [cdkId, ...article_ids]
+        );
+      }
+    }
+
+    res.json({ success: true, updatedCount: ids.length });
+  } catch (err) {
+    console.error('PUT /api/cdk/batch-bind-articles error:', err);
+    res.status(500).json({ error: '批量绑定教程失败' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/cdk/list — 管理员：列出所有 CDK（含绑定教程数量）
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/list', authMiddleware, async (req, res) => {

@@ -251,3 +251,146 @@
     letter-spacing: 0.5px;
 }
 
+/* ---- Batch Action Bar ---- */
+.batch-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1.2rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 10px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.batch-count {
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.batch-count strong {
+    color: var(--accent-color, #3b82f6);
+    font-size: 1.1rem;
+}
+
+.batch-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.batch-btn {
+    padding: 0.45rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.batch-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.batch-btn-bind {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+.batch-btn-bind:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.25);
+}
+
+.batch-btn-delete {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.batch-btn-delete:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.batch-btn-cancel {
+    background: rgba(148, 163, 184, 0.1);
+    color: var(--text-muted, #94a3b8);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+.batch-btn-cancel:hover {
+    background: rgba(148, 163, 184, 0.2);
+}
+
+/* Selected row */
+.selected-row {
+    background: rgba(59, 130, 246, 0.06) !important;
+}
+
+.selected-row td:first-child {
+    border-left: 3px solid #3b82f6;
+}
+
+/* Table checkbox */
+table th input[type="checkbox"],
+table td input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-color, #3b82f6);
+}
+
+/* ---- Preset Actions ---- */
+.preset-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem;
+    margin-top: 0.5rem;
+    background: rgba(59, 130, 246, 0.05);
+    border: 1px dashed rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+}
+
+.preset-btn {
+    padding: 0.35rem 0.8rem;
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.preset-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.preset-btn-reset {
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--text-muted, #94a3b8);
+    border-color: rgba(148, 163, 184, 0.2);
+}
+.preset-btn-reset:hover {
+    background: rgba(148, 163, 184, 0.15);
+}
+
+.preset-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+/* Batch bind modal hint */
+.batch-bind-hint {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+.batch-bind-hint strong {
+    color: var(--accent-color, #3b82f6);
+}
+

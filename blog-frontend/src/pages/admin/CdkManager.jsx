@@ -1,7 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { fetchCdks, createCdk, updateCdk, toggleCdkStatus, deleteCdk, fetchTutorials, updateCdkArticles } from '../../services/api';
+import { fetchCdks, createCdk, updateCdk, toggleCdkStatus, deleteCdk, fetchTutorials, updateCdkArticles, batchDeleteCdks, batchBindCdkArticles } from '../../services/api';
 import './CdkManager.css';
+
+const PRESET_KEY = 'cdk-create-presets';
+
+/** 从 localStorage 读取创建预设 */
+function loadPresets() {
+    try {
+        const raw = localStorage.getItem(PRESET_KEY);
+        if (raw) return JSON.parse(raw);
+    } catch { /* ignore */ }
+    return null;
+}
+
+/** 保存创建预设到 localStorage */
+function savePresets(data) {
+    try {
+        localStorage.setItem(PRESET_KEY, JSON.stringify(data));
+    } catch { /* ignore */ }
+}
 
 export default function CdkManager() {
     const [cdks, setCdks] = useState([]);
@@ -25,6 +43,12 @@ export default function CdkManager() {
     const [editingCdkId, setEditingCdkId] = useState(null);
     const [editArticleIds, setEditArticleIds] = useState([]);
     const [editLoading, setEditLoading] = useState(false);
+
+    // ── 批量管理 ──
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [batchLoading, setBatchLoading] = useState(false);
+    const [showBatchBindModal, setShowBatchBindModal] = useState(false);
+    const [batchArticleIds, setBatchArticleIds] = useState([]);
 
     useEffect(() => {
         loadCdks();
@@ -76,6 +100,12 @@ export default function CdkManager() {
             } else {
                 // 新建模式
                 await createCdk({ ...payload, article_ids: selectedArticleIds });
+                // 保存预设（仅新建时自动记忆）
+                savePresets({
+                    maxUses: Number(maxUses),
+                    expiresDays: Number(expiresDays),
+                    selectedArticleIds,
+                });
             }
             setShowCreateModal(false);
             resetForm();
@@ -101,6 +131,7 @@ export default function CdkManager() {
         try {
             await deleteCdk(id);
             setCdks(cdks.filter(c => c.id !== id));
+            setSelectedIds(prev => prev.filter(sid => sid !== id));
         } catch (err) {
             alert('删除凭证失败: ' + err.message);
         }
@@ -115,6 +146,18 @@ export default function CdkManager() {
         setSelectedArticleIds([]);
         setCreateError('');
         setEditingCdkInfo(null);
+    };
+
+    const openCreateModal = () => {
+        resetForm();
+        // 加载预设
+        const presets = loadPresets();
+        if (presets) {
+            setMaxUses(presets.maxUses ?? 0);
+            setExpiresDays(presets.expiresDays ?? 0);
+            setSelectedArticleIds(presets.selectedArticleIds ?? []);
+        }
+        setShowCreateModal(true);
     };
 
     const openEditModal = (cdk) => {
@@ -189,6 +232,75 @@ export default function CdkManager() {
         }
     };
 
+    // ── 批量操作 ──
+    const isAllSelected = cdks.length > 0 && selectedIds.length === cdks.length;
+
+    const toggleSelectAll = () => {
+        if (isAllSelected) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(cdks.map(c => c.id));
+        }
+    };
+
+    const toggleSelectOne = (id) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+        );
+    };
+
+    const handleBatchDelete = async () => {
+        if (selectedIds.length === 0) return;
+        if (!window.confirm(`确认批量删除 ${selectedIds.length} 个凭证吗？此操作不可恢复。`)) return;
+        try {
+            setBatchLoading(true);
+            await batchDeleteCdks(selectedIds);
+            setSelectedIds([]);
+            loadCdks();
+        } catch (err) {
+            alert('批量删除失败: ' + err.message);
+        } finally {
+            setBatchLoading(false);
+        }
+    };
+
+    const openBatchBindModal = () => {
+        setBatchArticleIds([]);
+        setShowBatchBindModal(true);
+    };
+
+    const handleBatchBind = async () => {
+        try {
+            setBatchLoading(true);
+            await batchBindCdkArticles(selectedIds, batchArticleIds);
+            setShowBatchBindModal(false);
+            setSelectedIds([]);
+            loadCdks();
+        } catch (err) {
+            alert('批量绑定教程失败: ' + err.message);
+        } finally {
+            setBatchLoading(false);
+        }
+    };
+
+    // ── 预设管理 ──
+    const handleSavePresets = () => {
+        savePresets({
+            maxUses: Number(maxUses),
+            expiresDays: Number(expiresDays),
+            selectedArticleIds,
+        });
+        alert('✅ 已保存为默认预设');
+    };
+
+    const handleClearPresets = () => {
+        localStorage.removeItem(PRESET_KEY);
+        setMaxUses(0);
+        setExpiresDays(0);
+        setSelectedArticleIds([]);
+        alert('↩ 已恢复出厂值');
+    };
+
     // ── 教程选择器组件 ──
     const ArticleSelector = ({ selected, setSelected }) => (
         <div className="article-selector">
@@ -224,15 +336,52 @@ export default function CdkManager() {
                     <h2>CDK 凭证管理</h2>
                     <p className="page-desc">管理数字资产交付的访问凭证及安全密钥。</p>
                 </div>
-                <button className="primary-btn" onClick={() => setShowCreateModal(true)}>
+                <button className="primary-btn" onClick={openCreateModal}>
                     + 新建凭证
                 </button>
             </div>
+
+            {/* 批量操作栏 */}
+            {selectedIds.length > 0 && (
+                <div className="batch-action-bar animate-fade-in">
+                    <span className="batch-count">已选中 <strong>{selectedIds.length}</strong> 项</span>
+                    <div className="batch-actions">
+                        <button
+                            className="batch-btn batch-btn-bind"
+                            onClick={openBatchBindModal}
+                            disabled={batchLoading}
+                        >
+                            📎 批量绑定教程
+                        </button>
+                        <button
+                            className="batch-btn batch-btn-delete"
+                            onClick={handleBatchDelete}
+                            disabled={batchLoading}
+                        >
+                            🗑️ 批量删除
+                        </button>
+                        <button
+                            className="batch-btn batch-btn-cancel"
+                            onClick={() => setSelectedIds([])}
+                        >
+                            取消选择
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="table-container glass-panel">
                 <table>
                     <thead>
                         <tr>
+                            <th style={{ width: '40px' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={isAllSelected}
+                                    onChange={toggleSelectAll}
+                                    title="全选/取消全选"
+                                />
+                            </th>
                             <th>CDK 凭据</th>
                             <th>使用次数</th>
                             <th>过期时间</th>
@@ -244,8 +393,16 @@ export default function CdkManager() {
                     <tbody>
                         {cdks.map(cdk => {
                             const linked = typeof cdk.linked_articles === 'string' ? JSON.parse(cdk.linked_articles) : (cdk.linked_articles || []);
+                            const isSelected = selectedIds.includes(cdk.id);
                             return (
-                                <tr key={cdk.id} className={cdk.is_active ? '' : 'disabled-row'}>
+                                <tr key={cdk.id} className={`${cdk.is_active ? '' : 'disabled-row'} ${isSelected ? 'selected-row' : ''}`}>
+                                    <td>
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => toggleSelectOne(cdk.id)}
+                                        />
+                                    </td>
                                     <td><code className="cdk-code">{cdk.code}</code></td>
                                     <td>{cdk.used_count} / {cdk.max_uses || '∞'}</td>
                                     <td>{cdk.expires_at ? new Date(cdk.expires_at).toLocaleDateString() : '永久'}</td>
@@ -282,7 +439,7 @@ export default function CdkManager() {
                         })}
                         {cdks.length === 0 && (
                             <tr>
-                                <td colSpan="6" className="empty-state">暂无 CDK 记录</td>
+                                <td colSpan="7" className="empty-state">暂无 CDK 记录</td>
                             </tr>
                         )}
                     </tbody>
@@ -339,6 +496,19 @@ export default function CdkManager() {
                             </div>
                             )}
 
+                            {/* 预设管理（仅新建模式） */}
+                            {!editingCdkInfo && (
+                                <div className="preset-actions">
+                                    <button type="button" className="preset-btn" onClick={handleSavePresets} title="将当前表单设置保存为新建默认值">
+                                        💾 保存为默认
+                                    </button>
+                                    <button type="button" className="preset-btn preset-btn-reset" onClick={handleClearPresets} title="清除已保存的预设">
+                                        ↩ 恢复出厂
+                                    </button>
+                                    <span className="preset-hint">新建凭证时自动填充上次保存的设置</span>
+                                </div>
+                            )}
+
                             {createError && <div className="error-text">{createError}</div>}
 
                             <div className="modal-actions">
@@ -365,6 +535,24 @@ export default function CdkManager() {
                             <button type="button" className="secondary-btn" onClick={() => setEditingCdkId(null)} disabled={editLoading}>取消</button>
                             <button type="button" className="primary-btn" onClick={handleSaveArticles} disabled={editLoading}>
                                 {editLoading ? '保存中...' : '保存'}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* 批量绑定教程 Modal */}
+            {showBatchBindModal && createPortal(
+                <div className="modal-overlay">
+                    <div className="modal-content admin-form glass-panel">
+                        <h2>批量绑定教程模块</h2>
+                        <p className="batch-bind-hint">将为已选中的 <strong>{selectedIds.length}</strong> 个 CDK 统一设置以下教程绑定（覆盖已有绑定）：</p>
+                        <ArticleSelector selected={batchArticleIds} setSelected={setBatchArticleIds} />
+                        <div className="modal-actions" style={{ marginTop: '1rem' }}>
+                            <button type="button" className="secondary-btn" onClick={() => setShowBatchBindModal(false)} disabled={batchLoading}>取消</button>
+                            <button type="button" className="primary-btn" onClick={handleBatchBind} disabled={batchLoading}>
+                                {batchLoading ? '绑定中...' : `确认绑定 (${selectedIds.length} 个 CDK)`}
                             </button>
                         </div>
                     </div>

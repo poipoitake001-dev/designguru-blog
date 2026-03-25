@@ -250,6 +250,26 @@ export async function updateCdkArticles(id, articleIds) {
     return res.json();
 }
 
+export async function batchDeleteCdks(ids) {
+    const res = handle401(await fetch(`${API_BASE}/cdk/batch-delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ ids })
+    }));
+    if (!res.ok) throw new Error('批量删除 CDK 失败');
+    return res.json();
+}
+
+export async function batchBindCdkArticles(ids, articleIds) {
+    const res = handle401(await fetch(`${API_BASE}/cdk/batch-bind-articles`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ ids, article_ids: articleIds })
+    }));
+    if (!res.ok) throw new Error('批量绑定教程失败');
+    return res.json();
+}
+
 // ---- 卡密兑换（代理到第三方发卡网） ----
 
 export async function validateRedeemCode(code) {

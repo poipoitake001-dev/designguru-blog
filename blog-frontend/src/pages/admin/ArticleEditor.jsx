@@ -31,6 +31,7 @@ export default function ArticleEditor() {
     const [lastSaved, setLastSaved] = useState(null);
     const [draftNotice, setDraftNotice] = useState(false);
     const saveTimerRef = useRef(null);
+    const justSavedRef = useRef(false);
 
     const DRAFT_KEY = `article-draft-${id || 'new'}`;
 
