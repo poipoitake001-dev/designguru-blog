@@ -9,7 +9,7 @@
 }
 
 .secure-loader.secure-result {
-    max-width: 860px;
+    max-width: 1100px;
 }
 
 /* ---- CDK 输入卡片 ---- */
@@ -158,8 +158,129 @@
     color: var(--text-muted);
 }
 
-/* ---- 教程模块列表 ---- */
+/* ===================================================================
+   教程区域 — 两栏布局（全局侧边栏 + 教程正文）
+   =================================================================== */
+
+.tutorial-section {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+/* ---- 全局章节导航侧边栏 ---- */
+.global-chapter-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    align-self: flex-start;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
+}
+
+.global-chapter-sidebar-inner {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 0.8rem;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+}
+
+.global-chapter-sidebar-inner::-webkit-scrollbar {
+    width: 3px;
+}
+.global-chapter-sidebar-inner::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+.global-chapter-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0.5px;
+    padding: 0 0.3rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.5rem;
+}
+
+.global-chapter-group {
+    margin-bottom: 0.6rem;
+}
+
+.global-chapter-group-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.3rem;
+    margin-bottom: 0.15rem;
+}
+
+.global-tut-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: #fff;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.global-tut-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---- 章节列表项 ---- */
+.chapter-nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.chapter-nav-item {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    padding: 0.3rem 0.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chapter-nav-item:hover {
+    color: #e2e8f0;
+    background: rgba(59, 130, 246, 0.12);
+    border-left-color: #3b82f6;
+}
+
+.chapter-nav-level-1 { padding-left: 0.5rem; font-weight: 600; color: #cbd5e1; }
+.chapter-nav-level-2 { padding-left: 1rem; }
+.chapter-nav-level-3 { padding-left: 1.5rem; font-size: 0.74rem; }
+.chapter-nav-level-4 { padding-left: 2rem; font-size: 0.72rem; color: #64748b; }
+
+/* ---- 教程列表（右侧主区域） ---- */
 .tutorial-modules {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
@@ -256,6 +377,7 @@
     color: #f8fafc;
 }
 
+/* ---- 教程正文 ---- */
 .tutorial-body {
     padding: 1.5rem;
     font-size: 0.95rem;
@@ -332,99 +454,27 @@
     box-shadow: 0 6px 20px rgba(59, 130, 246, 0.25);
 }
 
-/* ---- 展开包装器：侧边栏章节导航 + 教程正文 ---- */
-.tutorial-expanded-wrapper {
-    display: flex;
-    flex-direction: row;
-}
-
-/* ---- 章节导航面板 — 侧边栏 sticky ---- */
-.chapter-nav {
-    width: 200px;
-    flex-shrink: 0;
-    background: rgba(15, 23, 42, 0.6);
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.chapter-nav-inner {
-    position: sticky;
-    top: 0;
-    padding: 0.8rem 0.6rem;
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-.chapter-nav-inner::-webkit-scrollbar {
-    width: 3px;
-}
-.chapter-nav-inner::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
-}
-
-.chapter-nav-title {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #94a3b8;
-    margin-bottom: 0.5rem;
-    letter-spacing: 0.5px;
-    padding: 0 0.4rem;
-}
-
-.chapter-nav-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-}
-
-.chapter-nav-item {
-    font-size: 0.82rem;
-    color: #94a3b8;
-    padding: 0.35rem 0.6rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
-    border-left: 2px solid transparent;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.chapter-nav-item:hover {
-    color: #e2e8f0;
-    background: rgba(59, 130, 246, 0.1);
-    border-left-color: #3b82f6;
-}
-
-.chapter-nav-level-1 { padding-left: 0.6rem; font-weight: 600; color: #cbd5e1; }
-.chapter-nav-level-2 { padding-left: 1.2rem; }
-.chapter-nav-level-3 { padding-left: 1.8rem; font-size: 0.78rem; }
-.chapter-nav-level-4 { padding-left: 2.4rem; font-size: 0.75rem; color: #64748b; }
-
 /* ---- 响应式 ---- */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
     .secure-loader { margin: 1.5rem auto; }
+    .secure-loader.secure-result { max-width: 100%; }
     .cdk-card { padding: 1.8rem 1.2rem; }
     .result-code { font-size: 2.2rem; letter-spacing: 5px; }
 
-    .tutorial-expanded-wrapper {
+    .tutorial-section {
         flex-direction: column;
     }
-    .chapter-nav {
+    .global-chapter-sidebar {
         width: 100%;
-        border-right: none;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    }
-    .chapter-nav-inner {
         position: relative;
+        top: auto;
         max-height: none;
     }
+    .global-chapter-sidebar-inner {
+        max-height: 200px;
+    }
     .chapter-nav-item {
-        font-size: 0.78rem;
+        font-size: 0.76rem;
     }
 }
-
 

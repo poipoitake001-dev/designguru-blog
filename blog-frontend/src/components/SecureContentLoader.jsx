@@ -217,63 +217,83 @@ export default function SecureContentLoader() {
                 </span>
             </div>
 
-            {/* ② 教程模块列表（从数据库文章绑定而来） */}
-            {tutorials.length > 0 && (
-                <div className="tutorial-modules">
-                    <div className="tutorial-modules-header">
-                        <span>📖 使用教程</span>
-                        <span className="tutorial-count">{tutorials.length} 个模块</span>
-                    </div>
-                    {tutorials.map((tut, index) => {
-                        const isExpanded = !!expandedTutorials[tut.id];
-                        const headings = isExpanded ? extractHeadings(tut.content, tut.id) : [];
-                        const processedContent = isExpanded ? injectHeadingIds(tut.content, tut.id) : '';
+            {/* ② 教程模块 — 全局侧边栏 + 教程正文 */}
+            {tutorials.length > 0 && (() => {
+                // 聚合所有展开教程的章节标题
+                const globalHeadings = [];
+                tutorials.forEach((tut, index) => {
+                    if (!expandedTutorials[tut.id]) return;
+                    const headings = extractHeadings(tut.content, tut.id);
+                    if (headings.length > 0) {
+                        globalHeadings.push({ tutId: tut.id, tutTitle: tut.title, tutIndex: index + 1, headings });
+                    }
+                });
 
-                        return (
-                            <div key={tut.id} className="tutorial-module glass-panel">
-                                <button
-                                    className="tutorial-toggle"
-                                    onClick={() => toggleTutorial(tut.id)}
-                                    aria-expanded={isExpanded}
-                                >
-                                    <span className="tutorial-index">#{index + 1}</span>
-                                    <span className="tutorial-title">{tut.title}</span>
-                                    <span className={`toggle-arrow ${isExpanded ? 'open' : ''}`}>▼</span>
-                                </button>
-                                {isExpanded && (
-                                    <div className="tutorial-expanded-wrapper animate-fade-in">
-                                        {/* 章节导航 — 侧边栏 sticky */}
-                                        {headings.length > 1 && (
-                                            <nav className="chapter-nav">
-                                                <div className="chapter-nav-inner">
-                                                    <div className="chapter-nav-title">📑 章节导航</div>
-                                                    <ul className="chapter-nav-list">
-                                                        {headings.map((h) => (
-                                                            <li
-                                                                key={h.id}
-                                                                className={`chapter-nav-item chapter-nav-level-${h.level}`}
-                                                                onClick={() => scrollToHeading(h.id)}
-                                                            >
-                                                                {h.text}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            </nav>
-                                        )}
-                                        {/* 教程正文 */}
-                                        <div
-                                            className="tutorial-body"
-                                            onDoubleClick={handleTutorialBodyDblClick}
-                                            dangerouslySetInnerHTML={{ __html: processedContent }}
-                                        />
-                                    </div>
-                                )}
+                return (
+                    <div className="tutorial-section">
+                        {/* 全局章节导航侧边栏 */}
+                        {globalHeadings.length > 0 && (
+                            <aside className="global-chapter-sidebar">
+                                <div className="global-chapter-sidebar-inner">
+                                    <div className="global-chapter-title">📑 章节导航</div>
+                                    {globalHeadings.map(({ tutId, tutTitle, tutIndex, headings }) => (
+                                        <div key={tutId} className="global-chapter-group">
+                                            <div className="global-chapter-group-label">
+                                                <span className="global-tut-badge">#{tutIndex}</span>
+                                                <span className="global-tut-name">{tutTitle}</span>
+                                            </div>
+                                            <ul className="chapter-nav-list">
+                                                {headings.map((h) => (
+                                                    <li
+                                                        key={h.id}
+                                                        className={`chapter-nav-item chapter-nav-level-${h.level}`}
+                                                        onClick={() => scrollToHeading(h.id)}
+                                                    >
+                                                        {h.text}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                            </aside>
+                        )}
+
+                        {/* 教程列表 — 全宽 */}
+                        <div className="tutorial-modules">
+                            <div className="tutorial-modules-header">
+                                <span>📖 使用教程</span>
+                                <span className="tutorial-count">{tutorials.length} 个模块</span>
                             </div>
-                        );
-                    })}
-                </div>
-            )}
+                            {tutorials.map((tut, index) => {
+                                const isExpanded = !!expandedTutorials[tut.id];
+                                const processedContent = isExpanded ? injectHeadingIds(tut.content, tut.id) : '';
+
+                                return (
+                                    <div key={tut.id} className="tutorial-module glass-panel">
+                                        <button
+                                            className="tutorial-toggle"
+                                            onClick={() => toggleTutorial(tut.id)}
+                                            aria-expanded={isExpanded}
+                                        >
+                                            <span className="tutorial-index">#{index + 1}</span>
+                                            <span className="tutorial-title">{tut.title}</span>
+                                            <span className={`toggle-arrow ${isExpanded ? 'open' : ''}`}>▼</span>
+                                        </button>
+                                        {isExpanded && (
+                                            <div
+                                                className="tutorial-body animate-fade-in"
+                                                onDoubleClick={handleTutorialBodyDblClick}
+                                                dangerouslySetInnerHTML={{ __html: processedContent }}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* ③ 客服微信浮窗 */}
             {contactBase64 && (
