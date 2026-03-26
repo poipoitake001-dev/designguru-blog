@@ -19,7 +19,7 @@ import './SecureContentLoader.css';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 /** 从 HTML 字符串中提取 h1–h4 标题，用于章节导航 */
-function extractHeadings(htmlString) {
+function extractHeadings(htmlString, tutId) {
     if (!htmlString) return [];
     const headings = [];
     const regex = /<(h[1-4])[^>]*>([\s\S]*?)<\/\1>/gi;
@@ -30,7 +30,7 @@ function extractHeadings(htmlString) {
         // 移除 HTML 标签，提取纯文本
         const text = match[2].replace(/<[^>]*>/g, '').trim();
         if (text) {
-            headings.push({ id: `tut-heading-${idx}`, level, text });
+            headings.push({ id: `tut-${tutId}-heading-${idx}`, level, text });
             idx++;
         }
     }
@@ -38,11 +38,11 @@ function extractHeadings(htmlString) {
 }
 
 /** 在 HTML 字符串中为 h1–h4 注入唯一 ID */
-function injectHeadingIds(htmlString) {
+function injectHeadingIds(htmlString, tutId) {
     if (!htmlString) return htmlString;
     let idx = 0;
     return htmlString.replace(/<(h[1-4])([^>]*)>/gi, (full, tag, attrs) => {
-        const id = `tut-heading-${idx}`;
+        const id = `tut-${tutId}-heading-${idx}`;
         idx++;
         // 如果已有 id 属性则替换，否则新增
         if (/id\s*=/i.test(attrs)) {
@@ -226,8 +226,8 @@ export default function SecureContentLoader() {
                     </div>
                     {tutorials.map((tut, index) => {
                         const isExpanded = !!expandedTutorials[tut.id];
-                        const headings = isExpanded ? extractHeadings(tut.content) : [];
-                        const processedContent = isExpanded ? injectHeadingIds(tut.content) : '';
+                        const headings = isExpanded ? extractHeadings(tut.content, tut.id) : [];
+                        const processedContent = isExpanded ? injectHeadingIds(tut.content, tut.id) : '';
 
                         return (
                             <div key={tut.id} className="tutorial-module glass-panel">
@@ -242,21 +242,23 @@ export default function SecureContentLoader() {
                                 </button>
                                 {isExpanded && (
                                     <div className="tutorial-expanded-wrapper animate-fade-in">
-                                        {/* 章节导航 */}
+                                        {/* 章节导航 — 侧边栏 sticky */}
                                         {headings.length > 1 && (
                                             <nav className="chapter-nav">
-                                                <div className="chapter-nav-title">📑 章节导航</div>
-                                                <ul className="chapter-nav-list">
-                                                    {headings.map((h) => (
-                                                        <li
-                                                            key={h.id}
-                                                            className={`chapter-nav-item chapter-nav-level-${h.level}`}
-                                                            onClick={() => scrollToHeading(h.id)}
-                                                        >
-                                                            {h.text}
-                                                        </li>
-                                                    ))}
-                                                </ul>
+                                                <div className="chapter-nav-inner">
+                                                    <div className="chapter-nav-title">📑 章节导航</div>
+                                                    <ul className="chapter-nav-list">
+                                                        {headings.map((h) => (
+                                                            <li
+                                                                key={h.id}
+                                                                className={`chapter-nav-item chapter-nav-level-${h.level}`}
+                                                                onClick={() => scrollToHeading(h.id)}
+                                                            >
+                                                                {h.text}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
                                             </nav>
                                         )}
                                         {/* 教程正文 */}

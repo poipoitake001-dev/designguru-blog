@@ -8,6 +8,10 @@
     padding: 0 1rem;
 }
 
+.secure-loader.secure-result {
+    max-width: 860px;
+}
+
 /* ---- CDK 输入卡片 ---- */
 .cdk-card {
     padding: 2.5rem 2rem;
@@ -328,17 +332,34 @@
     box-shadow: 0 6px 20px rgba(59, 130, 246, 0.25);
 }
 
-/* ---- 展开包装器：教程正文 + 章节导航 ---- */
+/* ---- 展开包装器：侧边栏章节导航 + 教程正文 ---- */
 .tutorial-expanded-wrapper {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
 }
 
-/* ---- 章节导航面板 ---- */
+/* ---- 章节导航面板 — 侧边栏 sticky ---- */
 .chapter-nav {
-    padding: 0.8rem 1.2rem;
+    width: 200px;
+    flex-shrink: 0;
     background: rgba(15, 23, 42, 0.6);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.chapter-nav-inner {
+    position: sticky;
+    top: 0;
+    padding: 0.8rem 0.6rem;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.chapter-nav-inner::-webkit-scrollbar {
+    width: 3px;
+}
+.chapter-nav-inner::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
 }
 
 .chapter-nav-title {
@@ -347,6 +368,7 @@
     color: #94a3b8;
     margin-bottom: 0.5rem;
     letter-spacing: 0.5px;
+    padding: 0 0.4rem;
 }
 
 .chapter-nav-list {
@@ -388,11 +410,21 @@
     .cdk-card { padding: 1.8rem 1.2rem; }
     .result-code { font-size: 2.2rem; letter-spacing: 5px; }
 
+    .tutorial-expanded-wrapper {
+        flex-direction: column;
+    }
     .chapter-nav {
-        padding: 0.6rem 0.8rem;
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .chapter-nav-inner {
+        position: relative;
+        max-height: none;
     }
     .chapter-nav-item {
         font-size: 0.78rem;
     }
 }
+
 
