@@ -72,7 +72,7 @@ function mergeCardData(card) {
             if (parsed && typeof parsed === 'object') {
                 merged = { ...parsed, ...merged }; // card 自带字段优先
             }
-        } catch { /* cardData 不是 JSON，忽略 */ }
+        } catch (e) { /* cardData 不是 JSON，忽略 */ }
     }
 
     // 用兜底模板补全 API 没有返回的字段（API 返回的值永远优先）
@@ -250,7 +250,7 @@ function RedeemPanel() {
                 } else {
                     poll(taskId, attempt + 1);
                 }
-            } catch {
+            } catch (e) {
                 poll(taskId, attempt + 1);
             }
         }, 3000);

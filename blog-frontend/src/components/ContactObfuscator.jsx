@@ -21,7 +21,7 @@ function safeDecode(encoded) {
                 .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
                 .join('')
         );
-    } catch {
+    } catch (e) {
         return '';
     }
 }
@@ -37,7 +37,7 @@ async function copyToClipboard(text) {
     try {
         await navigator.clipboard.writeText(text);
         return true;
-    } catch {
+    } catch (e) {
         const textarea = document.createElement('textarea');
         textarea.value = text;
         textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px';

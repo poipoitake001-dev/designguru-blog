@@ -27,7 +27,7 @@ export default function EditorOutline({ editor, html }) {
                 }
             });
             return result;
-        } catch {
+        } catch (e) {
             return [];
         }
     }, [html]);

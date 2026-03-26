@@ -10,7 +10,7 @@ function loadPresets() {
     try {
         const raw = localStorage.getItem(PRESET_KEY);
         if (raw) return JSON.parse(raw);
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
     return null;
 }
 
@@ -18,7 +18,7 @@ function loadPresets() {
 function savePresets(data) {
     try {
         localStorage.setItem(PRESET_KEY, JSON.stringify(data));
-    } catch { /* ignore */ }
+    } catch (e) { /* ignore */ }
 }
 
 export default function CdkManager() {
