@@ -24,6 +24,16 @@
   animation: fadeInUp 0.6s ease-out;
 }
 
+/* 当教程结果显示时，扩大容器 */
+.cdk-page:has(.secure-result) {
+  align-items: flex-start;
+  padding-top: 2rem;
+}
+
+.cdk-container:has(.secure-result) {
+  max-width: 1200px;
+}
+
 /* ── 页头 ── */
 .cdk-header {
   text-align: center;
