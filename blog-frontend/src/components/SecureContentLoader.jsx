@@ -201,7 +201,7 @@ export default function SecureContentLoader() {
     }
 
     // ──── 已验证：动态渲染结果 ────
-    const { code2fa, tutorials = [], contactBase64 } = payload;
+    const { code2fa, tutorials = [], contactBase64, accountUsername, accountPassword } = payload;
 
     return (
         <div className="secure-loader secure-result animate-fade-in" ref={containerRef}>
@@ -216,6 +216,43 @@ export default function SecureContentLoader() {
                         : '正在刷新验证密钥…'}
                 </span>
             </div>
+
+            {/* ① ½ 账号密码信息 — 仅在有值时显示 */}
+            {(accountUsername || accountPassword) && (
+                <div className="account-card glass-panel">
+                    <span className="account-card__label">📋 账号信息</span>
+                    <div className="account-card__fields">
+                        {accountUsername && (
+                            <div className="account-card__row">
+                                <span className="account-card__key">账号</span>
+                                <span className="account-card__value">{accountUsername}</span>
+                                <button
+                                    className="account-card__copy"
+                                    title="复制账号"
+                                    onClick={() => navigator.clipboard.writeText(accountUsername)}
+                                >⧉</button>
+                            </div>
+                        )}
+                        {accountPassword && (
+                            <div className="account-card__row">
+                                <span className="account-card__key">密码</span>
+                                <span className="account-card__value">{accountPassword}</span>
+                                <button
+                                    className="account-card__copy"
+                                    title="复制密码"
+                                    onClick={() => navigator.clipboard.writeText(accountPassword)}
+                                >⧉</button>
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        className="account-card__copy-all"
+                        onClick={() => navigator.clipboard.writeText(
+                            [accountUsername && `账号: ${accountUsername}`, accountPassword && `密码: ${accountPassword}`].filter(Boolean).join('\n')
+                        )}
+                    >⧉ 一键复制全部</button>
+                </div>
+            )}
 
             {/* ② 教程模块 — 全局侧边栏 + 教程正文 */}
             {tutorials.length > 0 && (() => {

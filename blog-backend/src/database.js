@@ -61,21 +61,27 @@ async function initDb() {
       )
     `);
 
-    // ── CDK 凭证表：存储 CDK 编码、TOTP 密钥、客服联系方式 ──
+    // ── CDK 凭证表：存储 CDK 编码、TOTP 密钥、客服联系方式、账号密码 ──
     await client.query(`
       CREATE TABLE IF NOT EXISTS cdk_codes (
-        id             SERIAL PRIMARY KEY,
-        code           TEXT NOT NULL UNIQUE,
-        totp_secret    TEXT NOT NULL,
-        tutorial_text  TEXT NOT NULL DEFAULT '',
-        contact_base64 TEXT NOT NULL DEFAULT '',
-        max_uses       INTEGER NOT NULL DEFAULT 0,
-        used_count     INTEGER NOT NULL DEFAULT 0,
-        is_active      BOOLEAN NOT NULL DEFAULT TRUE,
-        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        expires_at     TIMESTAMPTZ
+        id               SERIAL PRIMARY KEY,
+        code             TEXT NOT NULL UNIQUE,
+        totp_secret      TEXT NOT NULL,
+        tutorial_text    TEXT NOT NULL DEFAULT '',
+        contact_base64   TEXT NOT NULL DEFAULT '',
+        account_username TEXT NOT NULL DEFAULT '',
+        account_password TEXT NOT NULL DEFAULT '',
+        max_uses         INTEGER NOT NULL DEFAULT 0,
+        used_count       INTEGER NOT NULL DEFAULT 0,
+        is_active        BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at       TIMESTAMPTZ
       )
     `);
+
+    // ── 迁移：为已有数据库新增 account_username / account_password 列 ──
+    await client.query(`ALTER TABLE cdk_codes ADD COLUMN IF NOT EXISTS account_username TEXT NOT NULL DEFAULT ''`);
+    await client.query(`ALTER TABLE cdk_codes ADD COLUMN IF NOT EXISTS account_password TEXT NOT NULL DEFAULT ''`);
 
     // ── CDK ↔ 教程多对多关联表 ──
     await client.query(`

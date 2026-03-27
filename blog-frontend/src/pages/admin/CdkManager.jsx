@@ -33,6 +33,8 @@ export default function CdkManager() {
     const [code, setCode] = useState('');
     const [totpSecret, setTotpSecret] = useState('');
     const [contactBase64, setContactBase64] = useState('');
+    const [accountUsername, setAccountUsername] = useState('');
+    const [accountPassword, setAccountPassword] = useState('');
     const [maxUses, setMaxUses] = useState(0);
     const [expiresDays, setExpiresDays] = useState(0);
     const [selectedArticleIds, setSelectedArticleIds] = useState([]);
@@ -90,6 +92,8 @@ export default function CdkManager() {
                 code: code.trim().toUpperCase(),
                 totp_secret: totpSecret.trim(),
                 contact_base64: contactBase64.trim(),
+                account_username: accountUsername.trim(),
+                account_password: accountPassword.trim(),
                 max_uses: Number(maxUses),
                 expires_days: Number(expiresDays),
             };
@@ -141,6 +145,8 @@ export default function CdkManager() {
         setCode('');
         setTotpSecret('');
         setContactBase64('');
+        setAccountUsername('');
+        setAccountPassword('');
         setMaxUses(0);
         setExpiresDays(0);
         setSelectedArticleIds([]);
@@ -165,6 +171,8 @@ export default function CdkManager() {
         setCode(cdk.code);
         setTotpSecret(cdk.totp_secret || '');
         setContactBase64(cdk.contact_base64 || '');
+        setAccountUsername(cdk.account_username || '');
+        setAccountPassword(cdk.account_password || '');
         setMaxUses(cdk.max_uses || 0);
         // 从 expires_at 倒推剩余天数
         if (cdk.expires_at) {
@@ -383,6 +391,7 @@ export default function CdkManager() {
                                 />
                             </th>
                             <th>CDK 凭据</th>
+                            <th>账号</th>
                             <th>使用次数</th>
                             <th>过期时间</th>
                             <th>创建时间</th>
@@ -404,6 +413,7 @@ export default function CdkManager() {
                                         />
                                     </td>
                                     <td><code className="cdk-code">{cdk.code}</code></td>
+                                    <td><span className="account-cell">{cdk.account_username || '—'}</span></td>
                                     <td>{cdk.used_count} / {cdk.max_uses || '∞'}</td>
                                     <td>{cdk.expires_at ? new Date(cdk.expires_at).toLocaleDateString() : '永久'}</td>
                                     <td>{new Date(cdk.created_at).toLocaleDateString()}</td>
@@ -439,7 +449,7 @@ export default function CdkManager() {
                         })}
                         {cdks.length === 0 && (
                             <tr>
-                                <td colSpan="7" className="empty-state">暂无 CDK 记录</td>
+                                <td colSpan="8" className="empty-state">暂无 CDK 记录</td>
                             </tr>
                         )}
                     </tbody>
@@ -480,6 +490,17 @@ export default function CdkManager() {
                                     <label>有效天数</label>
                                     <input type="number" min="0" value={expiresDays} onChange={e => setExpiresDays(e.target.value)} />
                                     <small>0 代表永久有效</small>
+                                </div>
+                            </div>
+
+                            <div className="form-group row-group">
+                                <div className="flex-1">
+                                    <label>账号 (可选)</label>
+                                    <input type="text" value={accountUsername} onChange={e => setAccountUsername(e.target.value)} placeholder="该 CDK 对应的账号" />
+                                </div>
+                                <div className="flex-1">
+                                    <label>密码 (可选)</label>
+                                    <input type="text" value={accountPassword} onChange={e => setAccountPassword(e.target.value)} placeholder="该 CDK 对应的密码" />
                                 </div>
                             </div>
 

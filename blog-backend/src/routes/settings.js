@@ -37,11 +37,16 @@ router.get('/settings', async (req, res) => {
 // ---------------------------------------------------------------------------
 router.put('/settings', requireAuth, async (req, res) => {
     try {
+        const ALLOWED_KEYS = new Set([
+            'site_name', 'hero_title', 'hero_subtitle', 'logo_url',
+            'contact_card_title', 'contact_card_desc', 'default_contact_base64'
+        ]);
         const updates = req.body;
         for (const [key, value] of Object.entries(updates)) {
+            if (!ALLOWED_KEYS.has(key)) continue; // 跳过非白名单键
             await run(
                 'INSERT INTO site_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
-                [key, value]
+                [key, String(value).substring(0, 5000)]
             );
         }
         res.json({ success: true });

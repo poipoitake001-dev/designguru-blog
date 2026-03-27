@@ -43,7 +43,6 @@ app.use(cors({
         if (allowedOrigins.includes(origin)) return callback(null, true);
         if (/\.vercel\.app$/.test(origin)) return callback(null, true);
         if (/^https:\/\/([a-z0-9-]+\.)?super-card-shop\.cyou$/.test(origin)) return callback(null, true);
-        if (/^https:\/\/(tech|api)\./.test(origin)) return callback(null, true);
         callback(new Error(`CORS blocked: ${origin}`));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

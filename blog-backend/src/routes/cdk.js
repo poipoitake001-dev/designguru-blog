@@ -78,15 +78,35 @@ const cdkRefreshLimiter = rateLimit({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Helper: validate & sanitize an array of IDs to safe positive integers
+// ─────────────────────────────────────────────────────────────────────────────
+function sanitizeIntArray(arr, fieldName = 'ids') {
+  if (!Array.isArray(arr)) return { error: `${fieldName} 必须为数组` };
+  const result = [];
+  for (const item of arr) {
+    const n = Number(item);
+    if (!Number.isInteger(n) || n <= 0) {
+      return { error: `${fieldName} 包含非法值` };
+    }
+    result.push(n);
+  }
+  return { data: result };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Helper: validate CDK and return the record (shared by verify & refresh)
 // ─────────────────────────────────────────────────────────────────────────────
 async function validateCdk(code) {
   if (!code || typeof code !== 'string' || code.trim().length === 0) {
     return { error: '请输入有效的 CDK 凭证', status: 400 };
   }
+  if (code.trim().length > 50) {
+    return { error: 'CDK 凭证格式不正确', status: 400 };
+  }
   const cdkCode = code.trim().toUpperCase();
   const cdk = await queryOne(
     `SELECT id, code, totp_secret, contact_base64,
+            account_username, account_password,
             max_uses, used_count, is_active, expires_at
      FROM cdk_codes WHERE UPPER(code) = $1`,
     [cdkCode]
@@ -159,6 +179,8 @@ router.post('/verify', cdkVerifyLimiter, async (req, res) => {
       timeRemaining: remaining,
       tutorials,
       contactBase64: finalContactBase64,
+      accountUsername: cdk.account_username || '',
+      accountPassword: cdk.account_password || '',
     });
   } catch (err) {
     console.error('POST /api/cdk/verify error:', err);
@@ -199,6 +221,8 @@ router.post('/create', authMiddleware, async (req, res) => {
       code,
       totp_secret,
       contact_base64 = '',
+      account_username = '',
+      account_password = '',
       max_uses = 0,
       expires_days = 0,
       article_ids = [],
@@ -206,6 +230,19 @@ router.post('/create', authMiddleware, async (req, res) => {
 
     if (!code || !totp_secret) {
       return res.status(400).json({ error: 'CDK 编码 和 TOTP 密钥 为必填项' });
+    }
+
+    // 字段长度校验
+    if (code.length > 50) return res.status(400).json({ error: 'CDK 编码过长（最多50字符）' });
+    if (totp_secret.length > 64) return res.status(400).json({ error: 'TOTP 密钥过长' });
+    if (account_username.length > 200) return res.status(400).json({ error: '账号过长' });
+    if (account_password.length > 200) return res.status(400).json({ error: '密码过长' });
+    if (contact_base64.length > 2000) return res.status(400).json({ error: '联系方式过长' });
+
+    // 校验 article_ids
+    if (article_ids.length > 0) {
+      const check = sanitizeIntArray(article_ids, 'article_ids');
+      if (check.error) return res.status(400).json({ error: check.error });
     }
 
     const existing = await queryOne('SELECT id FROM cdk_codes WHERE UPPER(code) = $1', [code.toUpperCase()]);
@@ -218,10 +255,10 @@ router.post('/create', authMiddleware, async (req, res) => {
       : null;
 
     const result = await run(
-      `INSERT INTO cdk_codes (code, totp_secret, contact_base64, max_uses, expires_at)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO cdk_codes (code, totp_secret, contact_base64, account_username, account_password, max_uses, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [code.toUpperCase(), totp_secret, contact_base64, max_uses, expiresAt]
+      [code.toUpperCase(), totp_secret, contact_base64, account_username, account_password, max_uses, expiresAt]
     );
 
     const newId = result.rows[0].id;
@@ -247,10 +284,13 @@ router.post('/create', authMiddleware, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.delete('/batch-delete', authMiddleware, async (req, res) => {
   try {
-    const { ids } = req.body;
-    if (!Array.isArray(ids) || ids.length === 0) {
+    const { ids: rawIds } = req.body;
+    if (!Array.isArray(rawIds) || rawIds.length === 0) {
       return res.status(400).json({ error: '请选择要删除的 CDK' });
     }
+    const idCheck = sanitizeIntArray(rawIds, 'ids');
+    if (idCheck.error) return res.status(400).json({ error: idCheck.error });
+    const ids = idCheck.data;
 
     // 生成参数占位符 $1, $2, $3 ...
     const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
@@ -274,10 +314,16 @@ router.delete('/batch-delete', authMiddleware, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.put('/batch-bind-articles', authMiddleware, async (req, res) => {
   try {
-    const { ids, article_ids = [] } = req.body;
-    if (!Array.isArray(ids) || ids.length === 0) {
+    const { ids: rawIds, article_ids: rawArticleIds = [] } = req.body;
+    if (!Array.isArray(rawIds) || rawIds.length === 0) {
       return res.status(400).json({ error: '请选择要操作的 CDK' });
     }
+    const idCheck = sanitizeIntArray(rawIds, 'ids');
+    if (idCheck.error) return res.status(400).json({ error: idCheck.error });
+    const ids = idCheck.data;
+    const artCheck = sanitizeIntArray(rawArticleIds, 'article_ids');
+    if (artCheck.error) return res.status(400).json({ error: artCheck.error });
+    const article_ids = artCheck.data;
 
     for (const cdkId of ids) {
       // 删除旧关联
@@ -307,6 +353,7 @@ router.get('/list', authMiddleware, async (req, res) => {
   try {
     const rows = await query(
       `SELECT c.id, c.code, c.totp_secret, c.contact_base64,
+              c.account_username, c.account_password,
               c.max_uses, c.used_count, c.is_active, c.created_at, c.expires_at,
               COALESCE(
                 (SELECT json_agg(json_build_object('id', a.id, 'title', a.title) ORDER BY ca.sort_order)
@@ -349,11 +396,18 @@ router.put('/toggle/:id', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { code, totp_secret, contact_base64, max_uses, expires_days } = req.body;
+    const { code, totp_secret, contact_base64, account_username, account_password, max_uses, expires_days } = req.body;
 
     if (!code || !totp_secret) {
       return res.status(400).json({ error: 'CDK 编码 和 TOTP 密钥 为必填项' });
     }
+
+    // 字段长度校验
+    if (code.length > 50) return res.status(400).json({ error: 'CDK 编码过长（最多50字符）' });
+    if (totp_secret.length > 64) return res.status(400).json({ error: 'TOTP 密钥过长' });
+    if ((account_username || '').length > 200) return res.status(400).json({ error: '账号过长' });
+    if ((account_password || '').length > 200) return res.status(400).json({ error: '密码过长' });
+    if ((contact_base64 || '').length > 2000) return res.status(400).json({ error: '联系方式过长' });
 
     // 检查 CDK 是否存在
     const existing = await queryOne('SELECT id FROM cdk_codes WHERE id = $1', [id]);
@@ -373,9 +427,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
     await run(
       `UPDATE cdk_codes
        SET code = $1, totp_secret = $2, contact_base64 = $3,
-           max_uses = $4, expires_at = $5
-       WHERE id = $6`,
-      [code.toUpperCase(), totp_secret, contact_base64 || '', max_uses || 0, expiresAt, id]
+           account_username = $4, account_password = $5,
+           max_uses = $6, expires_at = $7
+       WHERE id = $8`,
+      [code.toUpperCase(), totp_secret, contact_base64 || '', account_username || '', account_password || '', max_uses || 0, expiresAt, id]
     );
 
     res.json({ success: true, id: Number(id) });
@@ -414,7 +469,10 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 router.put('/articles/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { article_ids = [] } = req.body;
+    const { article_ids: rawArticleIds = [] } = req.body;
+    const artCheck = sanitizeIntArray(rawArticleIds, 'article_ids');
+    if (artCheck.error) return res.status(400).json({ error: artCheck.error });
+    const article_ids = artCheck.data;
 
     // 检查 CDK 是否存在
     const cdk = await queryOne('SELECT id FROM cdk_codes WHERE id = $1', [id]);
